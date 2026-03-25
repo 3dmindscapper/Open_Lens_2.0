@@ -4,6 +4,7 @@ translate.py — Local translation using Argos Translate.
 Language packs are downloaded automatically on first use.
 No internet connection required after initial pack download.
 """
+import re
 from typing import List, Dict, Any
 import argostranslate.package
 import argostranslate.translate
@@ -52,6 +53,17 @@ def _ensure_lang_pack(src: str, tgt: str):
     print(f"[Translate] Pack installed: {src} → {tgt}")
 
 
+def _strip_markdown(text: str) -> str:
+    """Strip markdown formatting before translation so Argos sees clean text."""
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\*{3}(.+?)\*{3}', r'\1', text)
+    text = re.sub(r'_{3}(.+?)_{3}', r'\1', text)
+    text = re.sub(r'\*{2}(.+?)\*{2}', r'\1', text)
+    text = re.sub(r'_{2}(.+?)_{2}', r'\1', text)
+    text = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'\1', text)
+    return text
+
+
 def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
     """Translate a string, preserving line breaks. Returns original text on failure."""
     if not text.strip():
@@ -67,18 +79,21 @@ def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
     if src == "unknown":
         return text
 
+    # Strip markdown before translating — cleaner input for translation engine
+    clean = _strip_markdown(text)
+
     try:
         _ensure_lang_pack(src, tgt)
         installed = argostranslate.translate.get_installed_languages()
         src_obj = next((l for l in installed if l.code == src), None)
         tgt_obj = next((l for l in installed if l.code == tgt), None)
         if src_obj is None or tgt_obj is None:
-            return text
+            return clean
         translation = src_obj.get_translation(tgt_obj)
         if translation is None:
-            return text
+            return clean
         # Translate line-by-line to preserve structural line breaks
-        lines = text.split("\n")
+        lines = clean.split("\n")
         translated_lines = []
         for line in lines:
             if line.strip():
@@ -88,7 +103,7 @@ def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
         return "\n".join(translated_lines)
     except Exception as e:
         print(f"[Translate] Warning: {e}")
-        return text
+        return clean
 
 
 def translate_blocks(
