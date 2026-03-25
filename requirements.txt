@@ -1,0 +1,19 @@
+
+# Core UI
+gradio>=4.44.0
+
+# PDF handling
+pymupdf>=1.24.0
+
+# Image processing
+Pillow>=10.4.0
+opencv-python>=4.10.0
+numpy>=1.26.0
+
+# OCR — dots.ocr uses transformers + torch
+transformers>=4.44.0
+torch>=2.3.0
+qwen-vl-utils>=0.0.8
+
+# Translation (fully local)
+argostranslate>=1.9.6

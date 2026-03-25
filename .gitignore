@@ -1,0 +1,22 @@
+# Model weights (large binary files)
+models/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.venv/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Output artifacts
+*.pdf
+test_inpainted.png
+test_rendered.png
