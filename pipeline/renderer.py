@@ -456,10 +456,31 @@ def _render_form(draw: ImageDraw.ImageDraw,
 # ── HTML table parsing and rendering ──────────────────────────────────────────
 
 def _parse_html_table(html: str) -> List[List[str]]:
-    """Parse an HTML table into a list of rows, each a list of cell strings."""
+    """Parse an HTML table into a list of rows, each a list of cell strings.
+
+    Handles malformed OCR HTML where <thead> may contain <th> cells
+    without a wrapping <tr> tag.
+    """
     rows: List[List[str]] = []
-    row_matches = re.findall(r'<tr[^>]*>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
-    for row_html in row_matches:
+
+    # 1) Extract header row from <thead> (may lack <tr> wrapper)
+    thead_m = re.search(r'<thead[^>]*>(.*?)</thead>', html,
+                        re.DOTALL | re.IGNORECASE)
+    if thead_m:
+        header_cells = re.findall(r'<th[^>]*>(.*?)</th>', thead_m.group(1),
+                                  re.DOTALL | re.IGNORECASE)
+        header = [re.sub(r'<[^>]+>', '', c).strip() for c in header_cells]
+        if header:
+            rows.append(header)
+
+    # 2) Extract body rows from <tr>...</tr>
+    #    Skip rows already captured from <thead>
+    thead_span = (thead_m.start(), thead_m.end()) if thead_m else None
+    for m in re.finditer(r'<tr[^>]*>(.*?)</tr>', html,
+                         re.DOTALL | re.IGNORECASE):
+        if thead_span and m.start() >= thead_span[0] and m.end() <= thead_span[1]:
+            continue  # already captured as header
+        row_html = m.group(1)
         cells = re.findall(r'<(?:td|th)[^>]*>(.*?)</(?:td|th)>', row_html,
                            re.DOTALL | re.IGNORECASE)
         row = [re.sub(r'<[^>]+>', '', c).strip() for c in cells]
@@ -507,6 +528,13 @@ def _find_table_font_size(draw: ImageDraw.ImageDraw,
     return best
 
 
+def _is_numeric_cell(text: str) -> bool:
+    """True if cell content is numeric (amounts, percentages, etc.)."""
+    cleaned = text.replace(',', '').replace('.', '').replace(' ', '')
+    alpha = sum(1 for c in cleaned if c.isalpha())
+    return alpha <= 1 and any(c.isdigit() for c in cleaned)
+
+
 def _render_table(draw: ImageDraw.ImageDraw,
                   rows: List[List[str]],
                   x: int, y: int, box_w: int, box_h: int,
@@ -516,10 +544,13 @@ def _render_table(draw: ImageDraw.ImageDraw,
     if not rows:
         return
 
-    # Determine number of columns from widest row
+    # Normalise rows so every row has the same number of columns
     n_cols = max(len(r) for r in rows)
     if n_cols == 0:
         return
+    for row in rows:
+        while len(row) < n_cols:
+            row.append("")
 
     # Distribute column widths proportionally based on content
     col_gap = 4
@@ -534,6 +565,11 @@ def _render_table(draw: ImageDraw.ImageDraw,
                 cb = draw.textbbox((0, 0), cell, font=ref_font)
                 col_max_w[ci] = max(col_max_w[ci], cb[2] - cb[0])
 
+    # Give empty columns a minimum width so they don't collapse to 20px
+    for ci in range(n_cols):
+        if col_max_w[ci] == 0:
+            col_max_w[ci] = 10  # minimal weight for empty cols
+
     total_content = sum(col_max_w) or 1
     col_widths = [max(20, int(available_w * (cw / total_content)))
                   for cw in col_max_w]
@@ -544,9 +580,19 @@ def _render_table(draw: ImageDraw.ImageDraw,
     ref = draw.textbbox((0, 0), "Ay", font=font)
     line_h = (ref[3] - ref[1]) + 2
 
+    # Detect which columns are numeric (right-align them)
+    numeric_col = [False] * n_cols
+    for ci in range(n_cols):
+        num_count = sum(1 for r in rows[1:] if ci < len(r)
+                        and r[ci].strip() and _is_numeric_cell(r[ci]))
+        total_count = sum(1 for r in rows[1:] if ci < len(r) and r[ci].strip())
+        if total_count > 0 and num_count / total_count >= 0.5:
+            numeric_col[ci] = True
+
     # Render rows
     y_off = y
-    for row in rows:
+    for ri, row in enumerate(rows):
+        is_header = (ri == 0 and rows[0] != rows[-1])  # treat first row as header
         max_lines = 1
         row_cells: List[List[str]] = []
         for ci, cell in enumerate(row):
@@ -558,11 +604,19 @@ def _render_table(draw: ImageDraw.ImageDraw,
         # Draw each cell
         x_off = x
         for ci, cell_lines in enumerate(row_cells):
+            cw = col_widths[ci] if ci < len(col_widths) else col_widths[-1]
             for li, line in enumerate(cell_lines):
                 if line.strip():
-                    draw.text((x_off, y_off + li * line_h), line,
-                              font=font, fill=color)
-            cw = col_widths[ci] if ci < len(col_widths) else col_widths[-1]
+                    # Right-align numeric columns
+                    if numeric_col[ci] and not is_header:
+                        tb = draw.textbbox((0, 0), line.strip(), font=font)
+                        text_w = tb[2] - tb[0]
+                        tx = x_off + cw - text_w
+                    else:
+                        tx = x_off
+                    cell_font = _get_font(font_size, True) if is_header else font
+                    draw.text((tx, y_off + li * line_h), line.strip(),
+                              font=cell_font, fill=color)
             x_off += cw + col_gap
 
         y_off += max_lines * line_h + 1

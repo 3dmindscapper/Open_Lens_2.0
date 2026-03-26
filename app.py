@@ -54,6 +54,51 @@ def _image_to_data_uri(img: Image.Image, fmt: str = "JPEG") -> str:
     return f"data:{mime};base64,{b64}"
 
 
+def _format_table_overlay(html: str) -> str:
+    """Convert an HTML table block into a clean overlay HTML table for copy/paste."""
+    # Parse header from <thead> (may have bare <th> without <tr>)
+    header_cells = []
+    thead_m = re.search(r'<thead[^>]*>(.*?)</thead>', html,
+                        re.DOTALL | re.IGNORECASE)
+    if thead_m:
+        header_cells = [re.sub(r'<[^>]+>', '', c).strip()
+                        for c in re.findall(r'<th[^>]*>(.*?)</th>',
+                                            thead_m.group(1),
+                                            re.DOTALL | re.IGNORECASE)]
+
+    # Parse body rows
+    body_rows = []
+    thead_span = (thead_m.start(), thead_m.end()) if thead_m else None
+    for m in re.finditer(r'<tr[^>]*>(.*?)</tr>', html,
+                         re.DOTALL | re.IGNORECASE):
+        if thead_span and m.start() >= thead_span[0] and m.end() <= thead_span[1]:
+            continue
+        cells = re.findall(r'<(?:td|th)[^>]*>(.*?)</(?:td|th)>', m.group(1),
+                           re.DOTALL | re.IGNORECASE)
+        row = [re.sub(r'<[^>]+>', '', c).strip() for c in cells]
+        if row:
+            body_rows.append(row)
+
+    # Build a simple HTML table for the overlay
+    parts = ['<table style="width:100%;border-collapse:collapse;'
+             'font-size:inherit;line-height:inherit;">']
+    if header_cells:
+        parts.append('<tr>')
+        for c in header_cells:
+            safe = c.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            parts.append(f'<th style="text-align:left;padding:0 2px;'
+                         f'font-weight:bold;">{safe}</th>')
+        parts.append('</tr>')
+    for row in body_rows:
+        parts.append('<tr>')
+        for c in row:
+            safe = c.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            parts.append(f'<td style="padding:0 2px;">{safe}</td>')
+        parts.append('</tr>')
+    parts.append('</table>')
+    return ''.join(parts)
+
+
 def _build_text_overlay_html(
     image: Image.Image,
     blocks: List[dict],
@@ -76,16 +121,17 @@ def _build_text_overlay_html(
         top_pct = (y1 / img_h) * 100
         w_pct = ((x2 - x1) / img_w) * 100
         h_pct = ((y2 - y1) / img_h) * 100
-        # Strip HTML table tags so raw <td>/<tr> don't leak into overlay
-        text = re.sub(r'</tr>', '\n', text, flags=re.IGNORECASE)
-        text = re.sub(r'</t[dh]>', '  ', text, flags=re.IGNORECASE)
-        text = re.sub(r'<[^>]+>', '', text)
-        text = re.sub(r'  +', '  ', text).strip()
-        if not text:
-            continue
-        # Escape HTML entities
-        safe_text = (text.replace("&", "&amp;").replace("<", "&lt;")
-                     .replace(">", "&gt;").replace("\n", "<br>"))
+        # Format table blocks as an HTML table for clean copy/paste
+        is_table = bool(re.search(r'<tr[^>]*>', text, re.IGNORECASE))
+        if is_table:
+            safe_text = _format_table_overlay(text)
+        else:
+            # Strip any stray HTML tags from non-table blocks
+            text = re.sub(r'<[^>]+>', '', text).strip()
+            if not text:
+                continue
+            safe_text = (text.replace("&", "&amp;").replace("<", "&lt;")
+                         .replace(">", "&gt;").replace("\n", "<br>"))
         divs.append(
             f'<div class="text-box" style="'
             f"left:{left_pct:.2f}%;top:{top_pct:.2f}%;"
@@ -138,7 +184,12 @@ def _build_preview_html(
         transition: background 0.15s, color 0.15s;
         border-radius: 2px;
     }
-    .text-box::selection { background: rgba(0,120,215,0.4); color: #000; }
+    .text-box table, .text-box th, .text-box td {
+        color: inherit;
+        user-select: text; -webkit-user-select: text;
+    }
+    .text-box::selection,
+    .text-box *::selection { background: rgba(0,120,215,0.4); color: #000; }
     .text-box:hover {
         background: rgba(255, 255, 255, 0.70);
         color: #000;
