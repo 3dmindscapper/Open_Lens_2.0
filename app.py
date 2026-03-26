@@ -7,6 +7,7 @@ Then open:   http://localhost:7860
 import base64
 import io
 import os
+import re
 import tempfile
 import traceback
 from pathlib import Path
@@ -75,6 +76,13 @@ def _build_text_overlay_html(
         top_pct = (y1 / img_h) * 100
         w_pct = ((x2 - x1) / img_w) * 100
         h_pct = ((y2 - y1) / img_h) * 100
+        # Strip HTML table tags so raw <td>/<tr> don't leak into overlay
+        text = re.sub(r'</tr>', '\n', text, flags=re.IGNORECASE)
+        text = re.sub(r'</t[dh]>', '  ', text, flags=re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', '', text)
+        text = re.sub(r'  +', '  ', text).strip()
+        if not text:
+            continue
         # Escape HTML entities
         safe_text = (text.replace("&", "&amp;").replace("<", "&lt;")
                      .replace(">", "&gt;").replace("\n", "<br>"))
@@ -126,12 +134,14 @@ def _build_preview_html(
         color: transparent; cursor: text;
         user-select: text; -webkit-user-select: text;
         z-index: 2;
+        background: transparent;
+        transition: background 0.15s, color 0.15s;
+        border-radius: 2px;
     }
-    .text-box::selection { background: rgba(0,120,215,0.3); color: black; }
+    .text-box::selection { background: rgba(0,120,215,0.4); color: #000; }
     .text-box:hover {
-        background: rgba(0,120,215,0.08);
-        outline: 1px solid rgba(0,120,215,0.3);
-        color: rgba(0,0,0,0.7);
+        background: rgba(255, 255, 255, 0.70);
+        color: #000;
     }
     </style>
     """
