@@ -232,6 +232,140 @@ def _sample_text_color(
     return (brightness, brightness, brightness)
 
 
+# ── Form layout detection ─────────────────────────────────────────────────────
+
+def _detect_form_pairs(orig_text: str, trans_text: str):
+    """
+    Detect alternating label/value lines that represent a two-column form.
+
+    Returns (orig_pairs, trans_pairs, header_or_None) where each pair is
+    (label, value) and header is (orig_header, trans_header) if the block
+    starts with a standalone header line (odd total count).
+    Returns None if the pattern is not detected.
+    """
+    orig_clean = _strip_markdown(orig_text)
+    trans_clean = _strip_markdown(trans_text)
+
+    orig_lines = [l for l in orig_clean.split("\n") if l.strip()]
+    trans_lines = [l for l in trans_clean.split("\n") if l.strip()]
+
+    if len(orig_lines) != len(trans_lines) or len(orig_lines) < 4:
+        return None
+
+    header = None
+    o_lines, t_lines = orig_lines, trans_lines
+
+    if len(o_lines) % 2 != 0:
+        # Odd count: treat the first line as a standalone header
+        if len(o_lines) >= 5:
+            header = (o_lines[0], t_lines[0])
+            o_lines = o_lines[1:]
+            t_lines = t_lines[1:]
+        else:
+            return None
+
+    orig_pairs = [(o_lines[i], o_lines[i + 1])
+                  for i in range(0, len(o_lines), 2)]
+    trans_pairs = [(t_lines[i], t_lines[i + 1])
+                   for i in range(0, len(t_lines), 2)]
+    return orig_pairs, trans_pairs, header
+
+
+def _find_form_font_size(draw: ImageDraw.ImageDraw,
+                         labels: List[str], values: List[str],
+                         box_w: int, box_h: int, bold: bool = False,
+                         min_size: int = 6, max_size: int = 120) -> int:
+    """
+    Binary-search the largest font size where side-by-side label–value rows
+    fit inside (box_w, box_h).  Values are allowed to word-wrap within their
+    column, and the resulting extra height is accounted for.
+    """
+    lo, hi = min_size, max_size
+    best = min_size
+
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        font = _get_font(mid, bold)
+
+        ref = draw.textbbox((0, 0), "Ay", font=font)
+        line_h = (ref[3] - ref[1]) + 2
+
+        # Label column width: longest label + gap
+        gap = max(int(mid * 0.5), 4)
+        max_lw = 0
+        for lbl in labels:
+            if lbl.strip():
+                lb = draw.textbbox((0, 0), lbl, font=font)
+                max_lw = max(max_lw, lb[2] - lb[0])
+
+        tab_stop = max_lw + gap
+        # Labels must not exceed 60% of box_w
+        if tab_stop > box_w * 0.6:
+            hi = mid - 1
+            continue
+
+        value_space = max(1, box_w - tab_stop)
+
+        # Total height: label is 1 line, value may wrap
+        total_h = 0
+        for val in values:
+            if val.strip():
+                val_lines = _wrap_line(draw, val, font, value_space)
+                total_h += max(1, len(val_lines)) * line_h
+            else:
+                total_h += line_h
+        total_h -= 2  # remove last spacing
+
+        if total_h <= box_h:
+            best = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+
+    return best
+
+
+def _render_form(draw: ImageDraw.ImageDraw,
+                 pairs: List[Tuple[str, str]],
+                 x: int, y: int, box_w: int,
+                 font_size: int, bold: bool,
+                 color: Tuple[int, int, int]):
+    """Render form label-value pairs side-by-side with tab-stop alignment."""
+    font = _get_font(font_size, bold)
+    spacing = 2
+
+    # Tab stop: longest label + gap
+    max_label_w = 0
+    for label, _ in pairs:
+        lb = draw.textbbox((0, 0), label, font=font)
+        max_label_w = max(max_label_w, lb[2] - lb[0])
+
+    gap = max(int(font_size * 0.5), 4)
+    tab_stop = min(max_label_w + gap, int(box_w * 0.55))
+    value_space = max(1, box_w - tab_stop)
+
+    y_off = y
+    for label, value in pairs:
+        ref = draw.textbbox((0, 0), label or " ", font=font)
+        line_h = ref[3] - ref[1]
+
+        if label.strip():
+            draw.text((x, y_off), label, font=font, fill=color)
+
+        if value.strip():
+            val_lines = _wrap_line(draw, value, font, value_space)
+            vy = y_off
+            for vl in val_lines:
+                if vl.strip():
+                    draw.text((x + tab_stop, vy), vl, font=font, fill=color)
+                vlb = draw.textbbox((0, 0), vl or " ", font=font)
+                vy += (vlb[3] - vlb[1]) + spacing
+            val_total = vy - y_off
+            y_off += max(line_h + spacing, val_total)
+        else:
+            y_off += line_h + spacing
+
+
 # ── Main rendering ────────────────────────────────────────────────────────────
 
 def render_translations(
@@ -246,6 +380,9 @@ def render_translations(
     Recovers the original font size by binary-searching what fits the original
     text in the box, then renders the translated text at the same size (shrinking
     by at most 30% if the translation is longer).
+
+    For form-like blocks (alternating label/value lines), renders with tab-stop
+    alignment so labels and values appear side-by-side as in the original.
     """
     result = inpainted_image.copy()
     draw = ImageDraw.Draw(result)
@@ -267,16 +404,62 @@ def render_translations(
         box_w = max(1, x2 - x1 - padding * 2)
         box_h = max(1, y2 - y1 - padding * 2)
 
-        # Recover what font size the original text was at
+        color = _sample_text_color(original_image, bbox)
+
+        # ── Form layout: detect alternating label/value pairs ─────────
+        if not center:
+            form = _detect_form_pairs(original_raw, translated_raw)
+            if form:
+                orig_pairs, trans_pairs, header = form
+                orig_labels = [p[0] for p in orig_pairs]
+                orig_values = [p[1] for p in orig_pairs]
+
+                # Include header row in sizing so it gets height budget
+                sz_labels = ([header[0]] + orig_labels) if header else orig_labels
+                sz_values = (["x"] + orig_values) if header else orig_values
+
+                stacked_size = _find_original_font_size(
+                    draw, original_raw, box_w, box_h, bold)
+                form_size = _find_form_font_size(
+                    draw, sz_labels, sz_values, box_w, box_h, bold)
+
+                # Only use form layout if it gives a clearly larger font,
+                # meaning the original must have had side-by-side layout.
+                if form_size >= stacked_size * 1.3:
+                    # Find size for translated pairs (may need to shrink)
+                    trans_labels = [p[0] for p in trans_pairs]
+                    trans_values = [p[1] for p in trans_pairs]
+                    tsz_labels = ([header[1]] + trans_labels) if header else trans_labels
+                    tsz_values = (["x"] + trans_values) if header else trans_values
+                    render_size = _find_form_font_size(
+                        draw, tsz_labels, tsz_values, box_w, box_h, bold)
+                    render_size = max(render_size, int(form_size * 0.7))
+
+                    y_start = y1 + padding
+
+                    # Render header line first (if present)
+                    if header:
+                        hdr_font = _get_font(render_size, bold)
+                        _, trans_hdr = header
+                        if trans_hdr.strip():
+                            draw.text((x1 + padding, y_start),
+                                      trans_hdr, font=hdr_font, fill=color)
+                        ref = draw.textbbox((0, 0), trans_hdr or " ", font=hdr_font)
+                        y_start += (ref[3] - ref[1]) + 2
+
+                    _render_form(draw, trans_pairs,
+                                 x1 + padding, y_start,
+                                 box_w, render_size, bold, color)
+                    continue
+
+        # ── Normal rendering ──────────────────────────────────────────
         orig_size = _find_original_font_size(
             draw, original_raw, box_w, box_h, bold=bold
         )
 
-        # Fit translated text — keep same size, shrink max 30%
         font, used_size, lines = _fit_translated_text(
             draw, translated, box_w, box_h, orig_size, bold=bold
         )
-        color = _sample_text_color(original_image, bbox)
 
         # Draw lines top-aligned
         spacing = 2
