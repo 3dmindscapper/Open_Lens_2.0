@@ -177,22 +177,26 @@ def _build_preview_html(
     .text-box {
         position: absolute; overflow: hidden;
         font-size: 10px; line-height: 1.2;
-        color: transparent; cursor: text;
+        color: rgba(0,0,0,0) !important; cursor: text;
         user-select: text; -webkit-user-select: text;
         z-index: 2;
         background: transparent;
         transition: background 0.15s, color 0.15s;
         border-radius: 2px;
     }
-    .text-box table, .text-box th, .text-box td {
-        color: inherit;
+    .text-box *, .text-box table, .text-box th, .text-box td {
+        color: rgba(0,0,0,0) !important;
         user-select: text; -webkit-user-select: text;
     }
     .text-box::selection,
-    .text-box *::selection { background: rgba(0,120,215,0.4); color: #000; }
+    .text-box *::selection { background: rgba(0,120,215,0.4); color: #000 !important; }
     .text-box:hover {
-        background: rgba(255, 255, 255, 0.70);
-        color: #000;
+        background: rgba(200, 200, 200, 0.75);
+        color: #000 !important;
+    }
+    .text-box:hover *, .text-box:hover table,
+    .text-box:hover th, .text-box:hover td {
+        color: #000 !important;
     }
     </style>
     """
