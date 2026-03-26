@@ -453,6 +453,121 @@ def _render_form(draw: ImageDraw.ImageDraw,
                     y_off += (flb[3] - flb[1]) + spacing
 
 
+# ── HTML table parsing and rendering ──────────────────────────────────────────
+
+def _parse_html_table(html: str) -> List[List[str]]:
+    """Parse an HTML table into a list of rows, each a list of cell strings."""
+    rows: List[List[str]] = []
+    row_matches = re.findall(r'<tr[^>]*>(.*?)</tr>', html, re.DOTALL | re.IGNORECASE)
+    for row_html in row_matches:
+        cells = re.findall(r'<(?:td|th)[^>]*>(.*?)</(?:td|th)>', row_html,
+                           re.DOTALL | re.IGNORECASE)
+        row = [re.sub(r'<[^>]+>', '', c).strip() for c in cells]
+        if row:
+            rows.append(row)
+    return rows
+
+
+def _is_html_table(text: str) -> bool:
+    """Check whether the block text contains HTML table markup."""
+    return bool(re.search(r'<tr[^>]*>', text, re.IGNORECASE))
+
+
+def _find_table_font_size(draw: ImageDraw.ImageDraw,
+                          rows: List[List[str]],
+                          col_widths: List[int],
+                          box_h: int, bold: bool = False,
+                          min_size: int = 6, max_size: int = 60) -> int:
+    """Binary-search the largest font where all table rows fit vertically,
+    accounting for cell text wrapping within assigned column widths."""
+    lo, hi = min_size, max_size
+    best = min_size
+
+    while lo <= hi:
+        mid = (lo + hi) // 2
+        font = _get_font(mid, bold)
+        ref = draw.textbbox((0, 0), "Ay", font=font)
+        line_h = (ref[3] - ref[1]) + 2
+
+        total_h = 0
+        for row in rows:
+            max_lines_in_row = 1
+            for ci, cell in enumerate(row):
+                cw = col_widths[ci] if ci < len(col_widths) else col_widths[-1]
+                wrapped = _wrap_line(draw, cell, font, cw)
+                max_lines_in_row = max(max_lines_in_row, len(wrapped))
+            total_h += max_lines_in_row * line_h + 1
+
+        if total_h <= box_h:
+            best = mid
+            lo = mid + 1
+        else:
+            hi = mid - 1
+
+    return best
+
+
+def _render_table(draw: ImageDraw.ImageDraw,
+                  rows: List[List[str]],
+                  x: int, y: int, box_w: int, box_h: int,
+                  bold: bool,
+                  color: Tuple[int, int, int]):
+    """Render parsed HTML table rows as a grid within the bounding box."""
+    if not rows:
+        return
+
+    # Determine number of columns from widest row
+    n_cols = max(len(r) for r in rows)
+    if n_cols == 0:
+        return
+
+    # Distribute column widths proportionally based on content
+    col_gap = 4
+    available_w = box_w - col_gap * (n_cols - 1)
+
+    # Measure max content width per column at a reference size
+    ref_font = _get_font(10, bold)
+    col_max_w = [0] * n_cols
+    for row in rows:
+        for ci, cell in enumerate(row):
+            if ci < n_cols and cell.strip():
+                cb = draw.textbbox((0, 0), cell, font=ref_font)
+                col_max_w[ci] = max(col_max_w[ci], cb[2] - cb[0])
+
+    total_content = sum(col_max_w) or 1
+    col_widths = [max(20, int(available_w * (cw / total_content)))
+                  for cw in col_max_w]
+
+    # Find font size
+    font_size = _find_table_font_size(draw, rows, col_widths, box_h, bold)
+    font = _get_font(font_size, bold)
+    ref = draw.textbbox((0, 0), "Ay", font=font)
+    line_h = (ref[3] - ref[1]) + 2
+
+    # Render rows
+    y_off = y
+    for row in rows:
+        max_lines = 1
+        row_cells: List[List[str]] = []
+        for ci, cell in enumerate(row):
+            cw = col_widths[ci] if ci < len(col_widths) else col_widths[-1]
+            wrapped = _wrap_line(draw, cell, font, cw)
+            row_cells.append(wrapped)
+            max_lines = max(max_lines, len(wrapped))
+
+        # Draw each cell
+        x_off = x
+        for ci, cell_lines in enumerate(row_cells):
+            for li, line in enumerate(cell_lines):
+                if line.strip():
+                    draw.text((x_off, y_off + li * line_h), line,
+                              font=font, fill=color)
+            cw = col_widths[ci] if ci < len(col_widths) else col_widths[-1]
+            x_off += cw + col_gap
+
+        y_off += max_lines * line_h + 1
+
+
 # ── Main rendering ────────────────────────────────────────────────────────────
 
 def render_translations(
@@ -492,6 +607,17 @@ def render_translations(
         box_h = max(1, y2 - y1 - padding * 2)
 
         color = _sample_text_color(original_image, bbox)
+
+        # ── HTML table rendering ──────────────────────────────────────
+        if _is_html_table(translated_raw) or _is_html_table(original_raw):
+            # Use translated text if it has HTML, otherwise translate was
+            # already stripped — parse from original and render translated rows
+            html_src = translated_raw if _is_html_table(translated_raw) else original_raw
+            rows = _parse_html_table(html_src)
+            if rows and any(any(c.strip() for c in r) for r in rows):
+                _render_table(draw, rows, x1 + padding, y1 + padding,
+                              box_w, box_h, bold, color)
+                continue
 
         # ── Form layout: detect alternating label/value pairs ─────────
         if not center:

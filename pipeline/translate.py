@@ -100,31 +100,102 @@ def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
     if src == "unknown":
         return text
 
-    # Strip markdown and HTML before translating — cleaner input for engine
-    clean = _strip_html(_strip_markdown(text))
-
     try:
         _ensure_lang_pack(src, tgt)
         installed = argostranslate.translate.get_installed_languages()
         src_obj = next((l for l in installed if l.code == src), None)
         tgt_obj = next((l for l in installed if l.code == tgt), None)
         if src_obj is None or tgt_obj is None:
-            return clean
+            return _strip_html(_strip_markdown(text))
         translation = src_obj.get_translation(tgt_obj)
         if translation is None:
-            return clean
-        # Translate line-by-line to preserve structural line breaks
-        lines = clean.split("\n")
-        translated_lines = []
-        for line in lines:
-            if line.strip():
-                translated_lines.append(translation.translate(line))
-            else:
-                translated_lines.append("")
-        return "\n".join(translated_lines)
+            return _strip_html(_strip_markdown(text))
+
+        # ── HTML table: translate cell contents in-place, keep structure ───
+        if re.search(r'<tr[^>]*>', text, re.IGNORECASE):
+            return _translate_html_table(text, translation)
+
+        # ── Normal text: strip markdown/HTML, group short lines for context ─
+        clean = _strip_html(_strip_markdown(text))
+        return _translate_lines(clean, translation)
+
     except Exception as e:
         print(f"[Translate] Warning: {e}")
-        return clean
+        return _strip_html(_strip_markdown(text))
+
+
+def _translate_html_table(html: str, translation) -> str:
+    """Translate cell contents inside HTML table, preserving table structure."""
+    def _translate_cell(match):
+        tag = match.group(1)       # td or th
+        attrs = match.group(2)     # any attributes
+        content = match.group(3)   # cell text
+        close = match.group(4)     # closing tag
+
+        # Clean up content
+        inner = re.sub(r'<[^>]+>', '', content).strip()
+        if not inner or _is_numeric_line(inner):
+            translated = inner
+        else:
+            translated = translation.translate(inner)
+        return f"<{tag}{attrs}>{translated}</{close}>"
+
+    result = re.sub(
+        r'<(td|th)([^>]*)>(.*?)</(td|th)>',
+        _translate_cell,
+        html,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
+    return result
+
+
+def _translate_lines(clean: str, translation) -> str:
+    """Translate text line-by-line with short-line grouping for context."""
+    lines = clean.split("\n")
+    result_lines: list = []
+    group: list = []
+
+    def _flush_group():
+        if not group:
+            return
+        joined = " ".join(group)
+        translated = translation.translate(joined)
+        # Try to re-split the translation to match the original count.
+        parts = translated.split(". ")
+        if len(parts) == len(group):
+            for k, p in enumerate(parts):
+                suffix = "." if k < len(parts) - 1 and not p.endswith(".") else ""
+                result_lines.append(p + suffix)
+        else:
+            result_lines.append(translated)
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            _flush_group()
+            group = []
+            result_lines.append("")
+        elif _is_numeric_line(stripped) or len(stripped) > 60:
+            _flush_group()
+            group = []
+            if _is_numeric_line(stripped):
+                result_lines.append(stripped)
+            else:
+                result_lines.append(translation.translate(stripped))
+        else:
+            group.append(stripped)
+            if len(group) >= 3:
+                _flush_group()
+                group = []
+
+    _flush_group()
+    return "\n".join(result_lines)
+
+
+def _is_numeric_line(text: str) -> bool:
+    """True if the line is mostly numbers/dates/amounts (shouldn't be translated)."""
+    alpha = sum(1 for c in text if c.isalpha())
+    return alpha <= 2
 
 
 def translate_blocks(

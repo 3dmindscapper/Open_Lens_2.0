@@ -4,6 +4,8 @@ app.py — Gradio web UI for DocuTranslate.
 Launch with: python app.py
 Then open:   http://localhost:7860
 """
+import base64
+import io
 import os
 import tempfile
 import traceback
@@ -42,16 +44,132 @@ OUTPUT_DIR = Path(tempfile.gettempdir()) / "docutranslate_output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _image_to_data_uri(img: Image.Image, fmt: str = "JPEG") -> str:
+    """Encode a PIL image as a base64 data URI for embedding in HTML."""
+    buf = io.BytesIO()
+    img.save(buf, format=fmt, quality=85)
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    mime = "image/jpeg" if fmt == "JPEG" else "image/png"
+    return f"data:{mime};base64,{b64}"
+
+
+def _build_text_overlay_html(
+    image: Image.Image,
+    blocks: List[dict],
+    text_key: str = "translated",
+) -> str:
+    """Build HTML with the image as background and selectable text boxes
+    positioned via CSS absolute positioning over each block's bbox."""
+    img_w, img_h = image.size
+    data_uri = _image_to_data_uri(image)
+
+    divs = []
+    for block in blocks:
+        text = block.get(text_key, "").strip()
+        bbox = block.get("bbox")
+        if not text or not bbox:
+            continue
+        x1, y1, x2, y2 = bbox
+        # Convert pixel positions to percentages for responsive layout
+        left_pct = (x1 / img_w) * 100
+        top_pct = (y1 / img_h) * 100
+        w_pct = ((x2 - x1) / img_w) * 100
+        h_pct = ((y2 - y1) / img_h) * 100
+        # Escape HTML entities
+        safe_text = (text.replace("&", "&amp;").replace("<", "&lt;")
+                     .replace(">", "&gt;").replace("\n", "<br>"))
+        divs.append(
+            f'<div class="text-box" style="'
+            f"left:{left_pct:.2f}%;top:{top_pct:.2f}%;"
+            f"width:{w_pct:.2f}%;height:{h_pct:.2f}%;"
+            f'">{safe_text}</div>'
+        )
+
+    return f"""
+    <div class="doc-container" style="
+        position:relative;display:inline-block;width:100%;
+        max-width:{img_w}px;
+    ">
+        <img src="{data_uri}" style="width:100%;display:block;" />
+        {"".join(divs)}
+    </div>
+    """
+
+
+def _build_preview_html(
+    original_pages: List[Image.Image],
+    translated_pages: List[Image.Image],
+    all_blocks: List[List[dict]],
+) -> str:
+    """Build full HTML for side-by-side original + translated preview
+    with selectable text overlays on the translated side."""
+
+    style = """
+    <style>
+    .preview-wrap { font-family: Arial, sans-serif; }
+    .page-row {
+        display: flex; gap: 12px; margin-bottom: 24px;
+        align-items: flex-start;
+    }
+    .page-col {
+        flex: 1; min-width: 0;
+    }
+    .page-label {
+        font-weight: bold; font-size: 14px; margin-bottom: 6px;
+        color: #555; text-align: center;
+    }
+    .doc-container { position: relative; display: inline-block; width: 100%; }
+    .doc-container img { width: 100%; display: block; }
+    .text-box {
+        position: absolute; overflow: hidden;
+        font-size: 10px; line-height: 1.2;
+        color: transparent; cursor: text;
+        user-select: text; -webkit-user-select: text;
+        z-index: 2;
+    }
+    .text-box::selection { background: rgba(0,120,215,0.3); color: black; }
+    .text-box:hover {
+        background: rgba(0,120,215,0.08);
+        outline: 1px solid rgba(0,120,215,0.3);
+        color: rgba(0,0,0,0.7);
+    }
+    </style>
+    """
+
+    pages_html = []
+    for i, (orig, trans, blocks) in enumerate(
+        zip(original_pages, translated_pages, all_blocks)
+    ):
+        orig_uri = _image_to_data_uri(orig)
+        trans_overlay = _build_text_overlay_html(trans, blocks, "translated")
+        orig_overlay = _build_text_overlay_html(orig, blocks, "text")
+
+        pages_html.append(f"""
+        <div class="page-row">
+            <div class="page-col">
+                <div class="page-label">Original — Page {i+1}</div>
+                {orig_overlay}
+            </div>
+            <div class="page-col">
+                <div class="page-label">Translated — Page {i+1}</div>
+                {trans_overlay}
+            </div>
+        </div>
+        """)
+
+    return f'<div class="preview-wrap">{style}{"".join(pages_html)}</div>'
+
+
 def process_document(
     file_obj,
     target_lang_name: str,
     progress=gr.Progress(track_tqdm=True),
-) -> Tuple[Optional[List[Image.Image]], Optional[str], str]:
+) -> Tuple[Optional[str], Optional[str], str]:
     """
     Main pipeline function called by Gradio.
 
     Returns:
-        - gallery: list of translated page images for side-by-side preview
+        - preview_html: HTML string with side-by-side selectable-text preview
         - output_file: path to the downloadable translated PDF
         - status: status message string
     """
@@ -70,6 +188,7 @@ def process_document(
 
         translated_pages = []
         original_pages = []
+        all_blocks = []
 
         for i, page_img in enumerate(pages):
             page_label = f"Page {i+1}/{n}"
@@ -78,9 +197,9 @@ def process_document(
             # ── Step 2: OCR ───────────────────────────────────────────────────
             blocks = run_ocr(page_img)
             if not blocks:
-                # No text found — keep page as-is
                 translated_pages.append(page_img)
                 original_pages.append(page_img)
+                all_blocks.append([])
                 status_lines.append(f"  {page_label}: no text detected, kept original.")
                 continue
 
@@ -101,6 +220,7 @@ def process_document(
 
             translated_pages.append(rendered)
             original_pages.append(page_img)
+            all_blocks.append(blocks)
 
         # ── Step 6: Export ────────────────────────────────────────────────────
         progress(0.92, desc="Saving output PDF...")
@@ -108,20 +228,13 @@ def process_document(
         out_path = str(OUTPUT_DIR / out_name)
         images_to_pdf(translated_pages, out_path)
 
+        progress(0.96, desc="Building preview...")
+        preview = _build_preview_html(original_pages, translated_pages, all_blocks)
+
         progress(1.0, desc="Done.")
         status_lines.append(f"\n✅ Done! Output saved to: {out_path}")
 
-        # Build side-by-side comparison images for the gallery
-        comparison_images = []
-        for orig, trans in zip(original_pages, translated_pages):
-            w = orig.width + trans.width + 8
-            h = max(orig.height, trans.height)
-            combined = Image.new("RGB", (w, h), (240, 240, 240))
-            combined.paste(orig, (0, 0))
-            combined.paste(trans, (orig.width + 8, 0))
-            comparison_images.append(combined)
-
-        return comparison_images, out_path, "\n".join(status_lines)
+        return preview, out_path, "\n".join(status_lines)
 
     except Exception:
         err = traceback.format_exc()
@@ -146,7 +259,7 @@ with gr.Blocks(
         with gr.Column(scale=1):
             file_input = gr.File(
                 label="Upload document",
-                file_types=[".pdf", ".jpg", ".jpeg", ".png"],
+                file_types=[".pdf", ".jpg", ".jpeg", ".png", ".webp"],
                 type="filepath",
             )
             lang_dropdown = gr.Dropdown(
@@ -168,18 +281,17 @@ with gr.Blocks(
                 interactive=False,
             )
 
-    gr.Markdown("### Side-by-side preview (original ← | → translated)")
-    gallery = gr.Gallery(
-        label="Pages",
-        columns=1,
-        height="auto",
-        object_fit="contain",
+    gr.Markdown(
+        "### Preview (original ← | → translated)  \n"
+        "*Hover over text on the translated side to highlight — "
+        "select and copy translated text directly.*"
     )
+    preview_html = gr.HTML(label="Preview")
 
     submit_btn.click(
         fn=process_document,
         inputs=[file_input, lang_dropdown],
-        outputs=[gallery, download_btn, status_box],
+        outputs=[preview_html, download_btn, status_box],
     )
 
     gr.Markdown(
@@ -189,6 +301,7 @@ with gr.Blocks(
         - First run will download Argos language packs (~100 MB per language pair).
         - CPU-only machines may take 20–60 seconds per page.
         - For best results, use clear high-resolution scans (150 DPI+).
+        - Hover over translated text to highlight it; select to copy.
         """
     )
 
