@@ -91,6 +91,36 @@ MOCK_BLOCKS = [
         "category": "Text",
         "lang": "fr",
     },
+    # ── "RENSEIGNEMENTS" section WITH standalone note line (13 lines, odd) ──
+    {
+        "text": "**RENSEIGNEMENTS RELATIFS A L'ACTIVITE ET A L'ETABLISSEMENT PRINCIPAL**",
+        "translated": "INFORMATION CONCERNING MAIN ACTIVITIES AND ESTABLISHMENT",
+        "bbox": (30, 585, 560, 600),
+        "category": "Section-header",
+        "lang": "fr",
+    },
+    {
+        "text": "Adresse de l'établissement\n7 Boulevard des Alliés 94600 Choisy-le-Roi\nNom commercial\n***Redacted***\nActivité(s) exercée(s)\nPratique de l'exercice vétérinaire\nDate de commencement d'activité\n01/04/2008\nEn attente de la production de la pièce justifiant de la capacité\nOrigine du fonds ou de l'activité\nCréation\nMode d'exploitation\nExploitation directe",
+        "translated": "Address of establishment\n7 Boulevard des Allied 94600 Choisy-le-Roi\nTrade name\nRedacted\nActivity(s)\nVeterinary practice\nStart date\n01/04/2008\nPending the production of the part supporting the capacity\nOrigin of fund or activity\nEstablishment\nOperating method\nDirect exploitation",
+        "bbox": (30, 605, 480, 710),
+        "category": "Text",
+        "lang": "fr",
+    },
+    # ── Second "RENSEIGNEMENTS" section (12 lines, even) ──
+    {
+        "text": "**RENSEIGNEMENTS RELATIFS AUX AUTRES ETABLISSEMENTS DANS LE RESSORT**",
+        "translated": "INFORMATION RELATING TO OTHER ESTABLISHMENTS IN THE RESENT",
+        "bbox": (30, 715, 560, 730),
+        "category": "Section-header",
+        "lang": "fr",
+    },
+    {
+        "text": "Adresse de l'établissement\n47 Rue de Paris 94470 Boissy-Saint-Léger\nActivité(s) exercée(s)\nClinique vétérinaire\nDate de commencement d'activité\n31/01/2011\nOrigine du fonds ou de l'activité\nCréation\nMode d'exploitation\nExploitation directe\nAdresse de l'établissement\nCentre Commercial Village 3 Rue de la Résistance 94320 Thiais",
+        "translated": "Address of establishment\n47 Rue de Paris 94470 Boissy-Saint-Léger\nActivity(s)\nVeterinary clinic\nStart date\n31/01/2011\nOrigin of fund or activity\nEstablishment\nOperating method\nDirect exploitation\nAddress of establishment\nCentre Commercial Village 3 Rue de la Résistance 94320 Thiais",
+        "bbox": (30, 735, 480, 850),
+        "category": "Text",
+        "lang": "fr",
+    },
 ]
 
 

@@ -65,11 +65,23 @@ def _strip_markdown(text: str) -> str:
 
 
 def _strip_html(text: str) -> str:
-    """Strip HTML table tags that dots.ocr emits for Table-category blocks."""
-    # Remove all HTML tags, keep inner text
-    text = re.sub(r'<[^>]+>', ' ', text)
+    """Convert HTML table structure to plain text with line breaks.
+
+    dots.ocr outputs Table blocks as HTML.  We convert row/cell boundaries
+    to newlines so the text preserves structure instead of becoming a blob.
+    """
+    # Replace row and cell boundaries with newlines
+    text = re.sub(r'</tr>', '\n', text, flags=re.IGNORECASE)
+    text = re.sub(r'</th>', '\t', text, flags=re.IGNORECASE)
+    text = re.sub(r'</td>', '\t', text, flags=re.IGNORECASE)
+    # Remove all remaining HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # Collapse tabs to single space (column separator)
+    text = re.sub(r'\t+', '  ', text)
     # Collapse multiple spaces (but keep newlines)
     text = re.sub(r'[^\S\n]+', ' ', text)
+    # Remove blank lines
+    text = re.sub(r'\n\s*\n', '\n', text)
     return text.strip()
 
 
