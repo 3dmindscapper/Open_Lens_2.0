@@ -64,6 +64,15 @@ def _strip_markdown(text: str) -> str:
     return text
 
 
+def _strip_html(text: str) -> str:
+    """Strip HTML table tags that dots.ocr emits for Table-category blocks."""
+    # Remove all HTML tags, keep inner text
+    text = re.sub(r'<[^>]+>', ' ', text)
+    # Collapse multiple spaces (but keep newlines)
+    text = re.sub(r'[^\S\n]+', ' ', text)
+    return text.strip()
+
+
 def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
     """Translate a string, preserving line breaks. Returns original text on failure."""
     if not text.strip():
@@ -79,8 +88,8 @@ def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
     if src == "unknown":
         return text
 
-    # Strip markdown before translating — cleaner input for translation engine
-    clean = _strip_markdown(text)
+    # Strip markdown and HTML before translating — cleaner input for engine
+    clean = _strip_html(_strip_markdown(text))
 
     try:
         _ensure_lang_pack(src, tgt)

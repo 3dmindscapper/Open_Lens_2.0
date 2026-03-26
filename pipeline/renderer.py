@@ -91,7 +91,10 @@ def _strip_markdown(text: str) -> str:
     text = re.sub(r'_{2}(.+?)_{2}', r'\1', text)
     # Italic: *text* (but not ***Redacted*** which was already handled)
     text = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)', r'\1', text)
-    return text
+    # HTML tags (dots.ocr emits these for Table blocks)
+    text = re.sub(r'<[^>]+>', ' ', text)
+    text = re.sub(r'[^\S\n]+', ' ', text)
+    return text.strip()
 
 
 # ── Text wrapping (respects existing newlines) ───────────────────────────────

@@ -232,28 +232,65 @@ def _detect_lang_hint(text: str) -> str:
         if 0x0400 <= cp <= 0x04FF:
             return "ru"
 
-    # Latin-script language detection via accented characters
+    # Latin-script language detection: two-pass approach.
+    # Pass 1: check for uniquely distinguishing characters.
+    # Pass 2: fall back to common stop-word counting for ambiguous cases.
     lower = text.lower()
-    french_chars = set("éèêëàâçùûüôîïœæ")
-    spanish_chars = set("ñ¡¿")
-    german_chars = set("ßäöü")
-    portuguese_chars = set("ãõ")
 
+    # Characters/markers unique (or near-unique) to one language
+    if "·" in lower:                        # ela geminada — Catalan only
+        return "ca"
+    if "ñ" in lower or "¡" in lower or "¿" in lower:
+        return "es"
+    if "ß" in lower:
+        return "de"
+    if "ã" in lower or "õ" in lower:
+        return "pt"
+    if "œ" in lower or "æ" in lower:
+        return "fr"
+
+    # ò is common in Catalan and Italian but NOT French
+    has_o_grave = "ò" in lower
+
+    # Accented-character counting for languages that share accents
+    catalan_chars = set("àèòíúçïü")
+    french_chars = set("éèêëàâçùûüôîï")
+    italian_chars = set("àèéìòù")
+    german_chars = set("äöü")
+
+    ca = sum(1 for c in lower if c in catalan_chars)
     fr = sum(1 for c in lower if c in french_chars)
-    es = sum(1 for c in lower if c in spanish_chars)
+    it = sum(1 for c in lower if c in italian_chars)
     de = sum(1 for c in lower if c in german_chars)
-    pt = sum(1 for c in lower if c in portuguese_chars)
 
-    best = max(fr, es, de, pt)
+    # Stop-word boosting to break ties between Catalan, French, Italian
+    words = set(re.findall(r'\b\w+\b', lower))
+    ca_stops = {"del", "els", "les", "amb", "per", "què", "és", "dels",
+                "ses", "les", "seva", "seu", "als", "pel", "uns"}
+    fr_stops = {"les", "des", "une", "est", "sont", "dans", "avec",
+                "pour", "sur", "aux", "qui", "que", "ont", "ces"}
+    it_stops = {"gli", "delle", "degli", "della", "nella", "nelle",
+                "sono", "alla", "alle", "anche", "questo", "questa"}
+
+    ca += sum(3 for w in words if w in ca_stops)
+    fr += sum(3 for w in words if w in fr_stops)
+    it += sum(3 for w in words if w in it_stops)
+
+    # ò presence strongly favours Catalan or Italian over French
+    if has_o_grave:
+        ca += 2
+        it += 2
+
+    best = max(ca, fr, it, de)
     if best > 0:
+        if ca == best:
+            return "ca"
         if fr == best:
             return "fr"
-        if es == best:
-            return "es"
+        if it == best:
+            return "it"
         if de == best:
             return "de"
-        if pt == best:
-            return "pt"
 
     # Latin script without distinctive accents — default to unknown
     return "unknown"
