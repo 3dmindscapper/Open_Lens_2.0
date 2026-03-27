@@ -86,8 +86,8 @@ def _format_table_overlay(html: str) -> str:
         parts.append('<tr>')
         for c in header_cells:
             safe = c.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            parts.append(f'<th style="text-align:left;padding:0 2px;'
-                         f'font-weight:bold;">{safe}</th>')
+            parts.append(f'<th style="text-align:left;padding:0 2px;">'
+                         f'{safe}</th>')
         parts.append('</tr>')
     for row in body_rows:
         parts.append('<tr>')
@@ -97,6 +97,87 @@ def _format_table_overlay(html: str) -> str:
         parts.append('</tr>')
     parts.append('</table>')
     return ''.join(parts)
+
+
+def _format_text_overlay(text: str) -> str:
+    """Format a text block for the overlay, detecting form layout.
+
+    For form blocks (alternating label/value pairs), renders as a
+    two-column table so labels and values are visually separated.
+    For regular text, uses simple line breaks.
+    """
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    if len(lines) < 4:
+        safe = (text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\n", "<br>"))
+        return safe
+
+    # Detect form pattern: alternating label / data-value lines
+    # More lenient — skip non-matching lines instead of breaking
+    from pipeline.translate import _is_numeric_line
+    pairs = []
+    standalone = []
+    i = 0
+    while i < len(lines):
+        if i < len(lines) - 1:
+            label = lines[i]
+            value = lines[i + 1]
+            is_data = (_is_numeric_line(value)
+                       or any(c.isdigit() for c in value)
+                       or len(value) <= 45
+                       or (len(label) < 45 and len(value) > len(label)))
+            if len(label) < 60 and not _is_numeric_line(label) and is_data:
+                pairs.append((label, value))
+                i += 2
+                continue
+        # Standalone line (header, long text, etc.)
+        standalone.append((i, lines[i]))
+        i += 1
+
+    if len(pairs) >= 2:
+        # Render as label: value table
+        parts = ['<table style="width:100%;border-collapse:collapse;'
+                 'font-size:inherit;line-height:inherit;">']
+
+        # Rebuild in original order
+        i = 0
+        pair_idx = 0
+        standalone_idx = 0
+        pair_positions = {}
+        for pi, (label, value) in enumerate(pairs):
+            # Find original position
+            idx = lines.index(label)
+            pair_positions[idx] = pi
+
+        for li, line in enumerate(lines):
+            sl = (line.replace("&", "&amp;").replace("<", "&lt;")
+                  .replace(">", "&gt;"))
+            if li in pair_positions:
+                pi = pair_positions[li]
+                lbl, val = pairs[pi]
+                sv = (val.replace("&", "&amp;").replace("<", "&lt;")
+                      .replace(">", "&gt;"))
+                slbl = (lbl.replace("&", "&amp;").replace("<", "&lt;")
+                        .replace(">", "&gt;"))
+                parts.append(
+                    f'<tr><td style="padding:1px 2px;'
+                    f'white-space:nowrap;vertical-align:top;">{slbl}</td>'
+                    f'<td style="padding:1px 2px 1px 8px;">{sv}</td></tr>'
+                )
+            elif li > 0 and (li - 1) in pair_positions:
+                continue  # value line already included with its label
+            else:
+                parts.append(
+                    f'<tr><td colspan="2" style="padding:1px 2px;">'
+                    f'{sl}</td></tr>'
+                )
+        parts.append('</table>')
+        return ''.join(parts)
+
+    # Regular text — simple line breaks
+    safe = (text.replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace("\n", "<br>"))
+    return safe
 
 
 def _build_text_overlay_html(
@@ -130,8 +211,7 @@ def _build_text_overlay_html(
             text = re.sub(r'<[^>]+>', '', text).strip()
             if not text:
                 continue
-            safe_text = (text.replace("&", "&amp;").replace("<", "&lt;")
-                         .replace(">", "&gt;").replace("\n", "<br>"))
+            safe_text = _format_text_overlay(text)
         divs.append(
             f'<div class="text-box" style="'
             f"left:{left_pct:.2f}%;top:{top_pct:.2f}%;"
@@ -184,18 +264,22 @@ def _build_preview_html(
         transition: background 0.15s, color 0.15s;
         border-radius: 2px;
     }
-    .text-box *, .text-box table, .text-box th, .text-box td {
+    .text-box *, .text-box table, .text-box th, .text-box td,
+    .text-box tr, .text-box thead, .text-box tbody {
         color: rgba(0,0,0,0) !important;
+        background: transparent !important;
+        border: none !important;
         user-select: text; -webkit-user-select: text;
     }
     .text-box::selection,
-    .text-box *::selection { background: rgba(0,120,215,0.4); color: #000 !important; }
+    .text-box *::selection { background: rgba(0,120,215,0.4) !important; color: #000 !important; }
     .text-box:hover {
         background: rgba(200, 200, 200, 0.75);
         color: #000 !important;
     }
-    .text-box:hover *, .text-box:hover table,
-    .text-box:hover th, .text-box:hover td {
+    .text-box:hover *, .text-box:hover table, .text-box:hover tr,
+    .text-box:hover th, .text-box:hover td,
+    .text-box:hover thead, .text-box:hover tbody {
         color: #000 !important;
     }
     </style>

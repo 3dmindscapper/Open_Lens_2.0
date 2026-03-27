@@ -294,13 +294,17 @@ def _detect_form_entries(orig_text: str, trans_text: str):
         # digits, dates, or proper-name patterns).  max_label_len: shorter
         # labels indicate a better split.
         best_k = 0
-        best_score = (float('inf'), float('inf'))
+        best_score = (float('inf'), float('inf'), float('inf'))
         for k in range(n):
             remaining = [orig_lines[i] for i in range(n) if i != k]
             labels = [remaining[i] for i in range(0, len(remaining), 2)]
+            values = [remaining[i] for i in range(1, len(remaining), 2)]
             data_count = sum(1 for l in labels if _is_data_like(l))
+            # More data-like values = better pairing; use negative so
+            # minimisation favours higher value-quality.
+            value_quality = -sum(1 for v in values if _is_data_like(v))
             max_ll = max(len(l) for l in labels)
-            score = (data_count, max_ll)
+            score = (data_count, value_quality, max_ll)
             if score < best_score:
                 best_score = score
                 best_k = k
@@ -367,22 +371,22 @@ def _find_form_font_size(draw: ImageDraw.ImageDraw,
                     max_lw = max(max_lw, lb[2] - lb[0])
 
         tab_stop = max_lw + gap
-        if tab_stop > box_w * 0.6:
+        if tab_stop > box_w * 0.55:
             hi = mid - 1
             continue
 
         value_space = max(1, box_w - tab_stop)
 
-        # Total height
+        # Total height (account for both label and value wrapping)
+        label_col_w = max(1, tab_stop - gap)
         total_h = 0
         for entry in entries:
             if entry[0] == "pair":
+                lbl = entry[1] if which == "orig" else entry[3]
                 val = entry[2] if which == "orig" else entry[4]
-                if val.strip():
-                    val_lines = _wrap_line(draw, val, font, value_space)
-                    total_h += max(1, len(val_lines)) * line_h
-                else:
-                    total_h += line_h
+                lbl_rows = max(1, len(_wrap_line(draw, lbl, font, label_col_w))) if lbl.strip() else 1
+                val_rows = max(1, len(_wrap_line(draw, val, font, value_space))) if val.strip() else 1
+                total_h += max(lbl_rows, val_rows) * line_h
             else:  # "full"
                 txt = entry[1] if which == "orig" else entry[2]
                 full_lines = _wrap_line(draw, txt, font, box_w)
@@ -426,8 +430,18 @@ def _render_form(draw: ImageDraw.ImageDraw,
             ref = draw.textbbox((0, 0), label or " ", font=font)
             line_h = ref[3] - ref[1]
 
+            # Wrap label if it exceeds the tab stop area
             if label.strip():
-                draw.text((x, y_off), label, font=font, fill=color)
+                label_lines = _wrap_line(draw, label, font, tab_stop - gap)
+                ly = y_off
+                for ll in label_lines:
+                    if ll.strip():
+                        draw.text((x, ly), ll, font=font, fill=color)
+                    llb = draw.textbbox((0, 0), ll or " ", font=font)
+                    ly += (llb[3] - llb[1]) + spacing
+                label_total = ly - y_off
+            else:
+                label_total = line_h + spacing
 
             if value.strip():
                 val_lines = _wrap_line(draw, value, font, value_space)
@@ -438,9 +452,9 @@ def _render_form(draw: ImageDraw.ImageDraw,
                     vlb = draw.textbbox((0, 0), vl or " ", font=font)
                     vy += (vlb[3] - vlb[1]) + spacing
                 val_total = vy - y_off
-                y_off += max(line_h + spacing, val_total)
+                y_off += max(label_total, val_total)
             else:
-                y_off += line_h + spacing
+                y_off += max(label_total, line_h + spacing)
         else:
             # Full-width standalone line
             _, _, text = entry

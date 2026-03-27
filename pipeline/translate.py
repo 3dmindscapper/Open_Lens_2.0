@@ -115,8 +115,15 @@ def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
         if re.search(r'<tr[^>]*>', text, re.IGNORECASE):
             return _translate_html_table(text, translation)
 
-        # ── Normal text: strip markdown/HTML, group short lines for context ─
+        # ── Normal text: strip markdown/HTML ────────────────────────────
         clean = _strip_html(_strip_markdown(text))
+
+        # ── Form-like block: alternating label/value lines ────────────
+        #    Translate each line individually to preserve structure
+        if _looks_like_form(clean):
+            return _translate_form_lines(clean, translation)
+
+        # ── Regular text: group short lines for better context ────────
         return _translate_lines(clean, translation)
 
     except Exception as e:
@@ -190,6 +197,72 @@ def _translate_lines(clean: str, translation) -> str:
 
     _flush_group()
     return "\n".join(result_lines)
+
+
+def _looks_like_form(text: str) -> bool:
+    """Detect alternating label/value structure (>=4 lines with short/data pattern).
+
+    Form blocks alternate between short label lines and data-value lines
+    (dates, numbers, addresses, names).  If we see at least 3 such pairs,
+    treat the whole block as a form so we translate line-by-line.
+    """
+    lines = [l.strip() for l in text.split("\n") if l.strip()]
+    if len(lines) < 4:
+        return False
+
+    pairs = 0
+    i = 0
+    while i < len(lines) - 1:
+        label = lines[i]
+        value = lines[i + 1]
+        # Label: short-ish text line (not a number/date)
+        # Value: a data-like line (number, date, name, address, etc.)
+        if (len(label) < 50 and not _is_numeric_line(label)
+                and (_is_numeric_line(value) or _is_data_value(value))):
+            pairs += 1
+            i += 2
+        else:
+            i += 1
+    return pairs >= 3
+
+
+def _is_data_value(text: str) -> bool:
+    """Heuristic: looks like a data value rather than a label.
+
+    Matches dates, amounts, addresses (with numbers), proper nouns,
+    and very short values (single word / code).
+    """
+    stripped = text.strip()
+    # Dates: 10/04/2008, 27/06/2024
+    if re.match(r'^\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', stripped):
+        return True
+    # Contains digits mixed with text (addresses, codes)
+    digits = sum(1 for c in stripped if c.isdigit())
+    if digits >= 2 and digits / max(len(stripped), 1) > 0.15:
+        return True
+    # Starts with uppercase word (proper noun / name)
+    words = stripped.split()
+    if words and words[0][0:1].isupper() and len(words) <= 8:
+        return True
+    # Very short (single code or value)
+    if len(stripped) <= 20:
+        return True
+    return False
+
+
+def _translate_form_lines(clean: str, translation) -> str:
+    """Translate each line individually to preserve form label/value structure."""
+    lines = clean.split("\n")
+    result = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            result.append("")
+        elif _is_numeric_line(stripped):
+            result.append(stripped)
+        else:
+            result.append(translation.translate(stripped))
+    return "\n".join(result)
 
 
 def _is_numeric_line(text: str) -> bool:
