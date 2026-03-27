@@ -1,5 +1,5 @@
 """
-app.py — Gradio web UI for DocuTranslate.
+app.py — Gradio web UI for OpenLens 2.0.
 
 Launch with: python app.py
 Then open:   http://localhost:7860
@@ -41,7 +41,7 @@ TARGET_LANGUAGES = {
     "Swedish":    "sv",
 }
 
-OUTPUT_DIR = Path(tempfile.gettempdir()) / "docutranslate_output"
+OUTPUT_DIR = Path(tempfile.gettempdir()) / "openlens2_output"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -393,11 +393,11 @@ def process_document(
 
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
 with gr.Blocks(
-    title="DocuTranslate",
+    title="OpenLens 2.0",
 ) as demo:
     gr.Markdown(
         """
-        # 🌐 DocuTranslate
+        # 🌐 OpenLens 2.0
         **Local AI-powered document translation.** Upload a PDF or image —
         translated text is overlaid directly onto the original layout.
         All processing is done locally. No data leaves your machine.

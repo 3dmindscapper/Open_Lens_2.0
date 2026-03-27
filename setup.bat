@@ -1,11 +1,11 @@
 @echo off
 setlocal enabledelayedexpansion
-title DocuTranslate — First-time Setup
+title OpenLens 2.0 — First-time Setup
 color 0A
 
 echo.
 echo ============================================================
-echo   DocuTranslate — One-time Setup
+echo   OpenLens 2.0 — One-time Setup
 echo ============================================================
 echo.
 
@@ -72,6 +72,10 @@ if errorlevel 1 (
     exit /b 1
 )
 echo       Done.
+echo.
+echo   Note: Flash Attention 2 is not available on Windows.
+echo   Using PyTorch SDPA backend instead ^(still fast on CUDA^).
+echo   For maximum speed, deploy on Linux — see setup_server.sh
 
 REM ── Download dots.ocr model ───────────────────────────────────
 echo.

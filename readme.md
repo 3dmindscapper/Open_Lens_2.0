@@ -1,4 +1,4 @@
-# DocuTranslate — Local AI Document Translation Tool
+# OpenLens 2.0 — Local AI Document Translation Tool
 
 Translates PDFs and images by overlaying translated text directly onto the original document layout — similar to Google Lens, but fully local.  
 Runs entirely on your machine — no internet required after setup, no external API calls, no data leaves your PC.

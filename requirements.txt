@@ -17,3 +17,9 @@ qwen-vl-utils>=0.0.8
 
 # Translation (fully local)
 argostranslate>=1.9.6
+
+# ── Optional: Flash Attention 2 (Linux + CUDA only, ~30% faster OCR) ────
+# Install on Linux servers via: pip install flash-attn --no-build-isolation
+# Requires: CUDA toolkit, gcc/g++, ninja-build
+# On Windows: not supported — SDPA is used automatically instead.
+# flash-attn>=2.5.0

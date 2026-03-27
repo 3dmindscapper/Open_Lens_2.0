@@ -1,10 +1,10 @@
 @echo off
-title DocuTranslate
+title OpenLens 2.0
 color 0A
 
 echo.
 echo ============================================================
-echo   DocuTranslate — Starting...
+echo   OpenLens 2.0 — Starting...
 echo ============================================================
 echo.
 

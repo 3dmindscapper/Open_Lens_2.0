@@ -23,10 +23,37 @@ from transformers import AutoProcessor, AutoModelForCausalLM, AutoConfig
 MODEL_ID = "rednote-hilab/dots.ocr"
 CACHE_DIR = os.path.join("models", "dots_ocr")
 
-# ── Performance tuning ────────────────────────────────────────────────────────
-# Lower max_pixels = fewer image tokens = faster inference (at cost of detail).
-# Default 1_003_520 matches Qwen2.5-VL-2B tier; original was 11_289_600.
-OCR_MAX_PIXELS = 5_000_000 #directly controls impact of table and ocr acuracy on runtime; 5M is a good balance for our test document, but may need adjustment for other documents.
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │  ⚡ SPEED KNOB 1 — OCR_MAX_PIXELS                                          │
+# │  Controls the maximum image resolution fed to the vision model.            │
+# │  LOWER = FASTER (fewer image tokens to process) but less fine detail.      │
+# │  HIGHER = SLOWER but more accurate on small text / dense tables.           │
+# │                                                                            │
+# │  Rough guide (RTX 4060 Ti, single page):                                   │
+# │    1_000_000  →  ~15-25s   (fast, good for clean docs)                     │
+# │    3_000_000  →  ~30-50s   (balanced)                                      │
+# │    5_000_000  →  ~50-80s   (detailed, best for dense/small text)           │
+# │   11_289_600  →  ~2min+    (original default, maximum detail)              │
+# └─────────────────────────────────────────────────────────────────────────────┘
+OCR_MAX_PIXELS = 5_000_000
+
+# ── Attention backend detection ───────────────────────────────────────────────
+# flash-attn is fastest but only works on Linux + CUDA.
+# SDPA (PyTorch native) is the universal fallback and still fast.
+_flash_attn_available = False
+try:
+    import flash_attn  # noqa: F401
+    if torch.cuda.is_available():
+        _flash_attn_available = True
+        print("[OCR] flash-attn detected — will use flash_attention_2 backend")
+except ImportError:
+    pass
+
+if not _flash_attn_available:
+    print("[OCR] flash-attn not installed — using SDPA backend "
+          "(install flash-attn on Linux for ~30%% faster inference)")
+
+_ATTN_BACKEND = "flash_attention_2" if _flash_attn_available else "sdpa"
 
 _model = None
 _processor = None
@@ -97,10 +124,10 @@ def _load_model():
         _processor.image_processor.min_pixels = 3136
         print(f"[OCR] max_pixels: {old_max} → {OCR_MAX_PIXELS}")
 
-    # ── Load config and set SDPA attention for the vision encoder ────────
+    # ── Load config and set attention backend for the vision encoder ────
     config = AutoConfig.from_pretrained(model_src, **model_kwargs)
     if hasattr(config, 'vision_config'):
-        config.vision_config.attn_implementation = "sdpa"
+        config.vision_config.attn_implementation = _ATTN_BACKEND
 
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
     _model = AutoModelForCausalLM.from_pretrained(
@@ -108,11 +135,11 @@ def _load_model():
         config=config,
         torch_dtype=dtype,
         device_map=device,
-        attn_implementation="sdpa",   # SDPA for LLM layers (PyTorch native)
+        attn_implementation=_ATTN_BACKEND,
         **model_kwargs,
     ).eval()
 
-    print(f"[OCR] Model loaded (attn=sdpa, dtype={dtype}).")
+    print(f"[OCR] Model loaded (attn={_ATTN_BACKEND}, dtype={dtype}).")
 
 
 def _smart_resize(height: int, width: int, factor: int = 28,
@@ -357,12 +384,23 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
     imgpad_count = (inputs["input_ids"] == _model.config.image_token_id).sum().item()
     print(f"[OCR] Input: {inputs['input_ids'].shape[1]} tokens, {imgpad_count} imgpad")
 
-    # ── Generate ─────────────────────────────────────────────────────────
+    # ┌─────────────────────────────────────────────────────────────────────┐
+    # │  ⚡ SPEED KNOB 2 — max_new_tokens                                   │
+    # │  Maximum number of tokens the model can generate per page.          │
+    # │  LOWER = FASTER (caps generation time) but may truncate output      │
+    # │          on very dense pages with many text blocks.                  │
+    # │  HIGHER = SLOWER worst-case but ensures all text is captured.       │
+    # │                                                                     │
+    # │  Typical document page produces 500-1500 tokens.                    │
+    # │  4096 is generous; reduce to 2048 for speed if pages aren't dense.  │
+    # └─────────────────────────────────────────────────────────────────────┘
+    MAX_NEW_TOKENS = 4096
+
     t0 = time.perf_counter()
     with torch.inference_mode():
         generated_ids = _model.generate(
             **inputs,
-            max_new_tokens=4096,
+            max_new_tokens=MAX_NEW_TOKENS,
             do_sample=False,
         )
     gen_time = time.perf_counter() - t0
