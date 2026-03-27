@@ -13,14 +13,20 @@ import os
 import re
 import json
 import math
+import time
 from typing import List, Dict, Any
 
 import torch
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForCausalLM
+from transformers import AutoProcessor, AutoModelForCausalLM, AutoConfig
 
 MODEL_ID = "rednote-hilab/dots.ocr"
 CACHE_DIR = os.path.join("models", "dots_ocr")
+
+# ── Performance tuning ────────────────────────────────────────────────────────
+# Lower max_pixels = fewer image tokens = faster inference (at cost of detail).
+# Default 1_003_520 matches Qwen2.5-VL-2B tier; original was 11_289_600.
+OCR_MAX_PIXELS = 5_000_000 #directly controls impact of table and ocr acuracy on runtime; 5M is a good balance for our test document, but may need adjustment for other documents.
 
 _model = None
 _processor = None
@@ -84,19 +90,33 @@ def _load_model():
     print(f"[OCR] Processor: {type(_processor).__name__}, "
           f"image_token={getattr(_processor, 'image_token', '?')}")
 
+    # ── Override image resolution cap for speed ──────────────────────────
+    if hasattr(_processor, 'image_processor'):
+        old_max = getattr(_processor.image_processor, 'max_pixels', None)
+        _processor.image_processor.max_pixels = OCR_MAX_PIXELS
+        _processor.image_processor.min_pixels = 3136
+        print(f"[OCR] max_pixels: {old_max} → {OCR_MAX_PIXELS}")
+
+    # ── Load config and set SDPA attention for the vision encoder ────────
+    config = AutoConfig.from_pretrained(model_src, **model_kwargs)
+    if hasattr(config, 'vision_config'):
+        config.vision_config.attn_implementation = "sdpa"
+
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
     _model = AutoModelForCausalLM.from_pretrained(
         model_src,
+        config=config,
         torch_dtype=dtype,
         device_map=device,
+        attn_implementation="sdpa",   # SDPA for LLM layers (PyTorch native)
         **model_kwargs,
     ).eval()
 
-    print("[OCR] Model loaded.")
+    print(f"[OCR] Model loaded (attn=sdpa, dtype={dtype}).")
 
 
 def _smart_resize(height: int, width: int, factor: int = 28,
-                  min_pixels: int = 3136, max_pixels: int = 11289600):
+                  min_pixels: int = 3136, max_pixels: int = OCR_MAX_PIXELS):
     """Compute resized dimensions matching the Qwen2.5-VL processor's smart_resize."""
     h_bar = max(factor, round(height / factor) * factor)
     w_bar = max(factor, round(width / factor) * factor)
@@ -338,8 +358,14 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
     print(f"[OCR] Input: {inputs['input_ids'].shape[1]} tokens, {imgpad_count} imgpad")
 
     # ── Generate ─────────────────────────────────────────────────────────
-    with torch.no_grad():
-        generated_ids = _model.generate(**inputs, max_new_tokens=4096)
+    t0 = time.perf_counter()
+    with torch.inference_mode():
+        generated_ids = _model.generate(
+            **inputs,
+            max_new_tokens=4096,
+            do_sample=False,
+        )
+    gen_time = time.perf_counter() - t0
 
     generated_ids_trimmed = [
         out_ids[len(in_ids):]
@@ -350,7 +376,7 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
         clean_up_tokenization_spaces=False,
     )[0]
 
-    print(f"[OCR] Generated {len(generated_ids_trimmed[0])} new tokens")
+    print(f"[OCR] Generated {len(generated_ids_trimmed[0])} tokens in {gen_time:.1f}s")
     print(f"[OCR] Raw output (first 500 chars): {raw[:500]}")
 
     blocks = _parse_ocr_output(raw, img_w, img_h)
