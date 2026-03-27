@@ -32,10 +32,12 @@ Runs entirely on your machine — no internet required after setup, no external 
 Open_Lens_2.0/
 ├── readme.md
 ├── setup.bat          ← Run once to install everything (Windows)
+├── setup_server.sh    ← Run once for Linux server deployment (+ Flash Attention)
 ├── run.bat            ← Run daily to launch the app
 ├── requirements.txt
 ├── app.py             ← Gradio web UI + pipeline orchestration
 ├── download_model.py  ← Downloads dots.ocr weights into models/
+├── test_renderer.py   ← Visual test for renderer with mock OCR blocks
 ├── pipeline/
 │   ├── init.py
 │   ├── ocr.py         ← dots.ocr inference + layout parsing
@@ -43,7 +45,7 @@ Open_Lens_2.0/
 │   ├── inpaint.py     ← Erase original text from image
 │   ├── renderer.py    ← Overlay translated text (font recovery, form layout)
 │   └── pdf_utils.py   ← PDF ↔ image conversion (PyMuPDF @ 150 DPI)
-└── models/            ← Auto-created, stores downloaded model weights (~2–4 GB)
+└── models/            ← Auto-created, stores downloaded model weights (~5.8 GB)
 ```
 
 ---
@@ -59,7 +61,17 @@ Open_Lens_2.0/
    — Takes 5–15 minutes on first run depending on your connection.
 5. Double-click **`run.bat`** to start the app.
 6. Open your browser at **http://localhost:7860**
+## One-time setup (Linux server — with Flash Attention)
 
+For production / mass-usage deployment on Linux with NVIDIA GPUs:
+
+```bash
+chmod +x setup_server.sh
+./setup_server.sh
+```
+
+This installs everything including **Flash Attention 2** for ~30% faster OCR inference.  
+Requires: CUDA toolkit, gcc/g++, ninja-build.
 ---
 
 ## Daily use
@@ -109,13 +121,21 @@ Full list: https://www.argosopentech.com/argospm/index/
 
 ## Hardware notes
 
-| Setup                 | Expected speed      |
-|-----------------------|---------------------|
-| NVIDIA GPU (CUDA)     | ~3–8 s per page     |
-| CPU only (no GPU)     | ~20–60 s per page   |
-| Apple Silicon (MPS)   | ~5–15 s per page    |
+| Setup                 | Expected speed          |
+|-----------------------|-------------------------|
+| NVIDIA GPU + Flash Attn (Linux) | ~30–60 s per page |
+| NVIDIA GPU + SDPA (Windows)     | ~50–80 s per page |
+| CPU only (no GPU)     | ~2–5 min per page       |
 
-dots.ocr auto-detects your GPU. No manual config needed.
+dots.ocr auto-detects your GPU. On CUDA, the model runs in **bfloat16** with **SDPA** attention (or **Flash Attention 2** if installed on Linux).  
+Speed depends heavily on two tunable constants in `pipeline/ocr.py`:
+
+| Knob | What it does | Trade-off |
+|------|-------------|-----------|
+| `OCR_MAX_PIXELS` | Max image resolution fed to the model | Lower = faster, less detail |
+| `MAX_NEW_TOKENS` | Max output tokens per page | Lower = faster, may truncate dense pages |
+
+See the commented boxes in `pipeline/ocr.py` for detailed guidance.
 
 ---
 
@@ -166,7 +186,6 @@ Planned stack: **FastAPI** with background task queue, optional Redis/Celery for
 - **Translation memory / glossary** — user-defined term mappings (e.g. company names, legal terms) that override Argos output.
 - **Docker image** — single-command deployment with GPU passthrough for server environments.
 - **Progress streaming** — real-time page-by-page progress updates via WebSocket or SSE.
-- **Improved table rendering** — parse HTML table structure from OCR output and reconstruct grid layouts with cell borders.
 
 ---
 
