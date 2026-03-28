@@ -81,17 +81,7 @@ REM ── Download dots.ocr model ───────────────
 echo.
 echo [5/5] Downloading dots.ocr model weights (~2-4 GB)...
 echo       This only happens once. Please wait...
-python -c "
-from transformers import AutoTokenizer, AutoModel
-import os
-model_id = 'rednote-hilab/dots.ocr'
-cache_dir = os.path.join('models', 'dots_ocr')
-print('  Downloading tokenizer...')
-AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
-print('  Downloading model weights...')
-AutoModel.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
-print('  Model ready.')
-"
+python download_model.py
 if errorlevel 1 (
     echo [ERROR] Model download failed. Check your internet connection and try again.
     pause
