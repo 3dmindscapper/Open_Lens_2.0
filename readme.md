@@ -193,11 +193,9 @@ GET /api/status/{job_id}
 Planned stack: **FastAPI** with background task queue, optional Redis/Celery for multi-worker scaling.
 
 ### Additional planned features
-- **Manual source-language override** — dropdown in the UI to force a source language when auto-detection fails.
 - **Batch processing** — upload a folder of documents and translate them all in one run.
 - **Translation memory / glossary** — user-defined term mappings (e.g. company names, legal terms) that override Argos output.
-- **Docker image** — single-command deployment with GPU passthrough for server environments.
-- **Progress streaming** — real-time page-by-page progress updates via WebSocket or SSE.
+- NEXT UP---> **Upgrading to dots.mocr** for improved results
 
 ---
 
