@@ -1,0 +1,153 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "blocks": [
+        {
+          "bbox": [
+            141,
+            248,
+            243,
+            269
+          ],
+          "category": "Page-header",
+          "text": "IOM - OIM",
+          "lang": "fr",
+          "translated": "IOM – OIM"
+        },
+        {
+          "bbox": [
+            512,
+            215,
+            647,
+            242
+          ],
+          "category": "Page-header",
+          "text": "UNHCR",
+          "lang": "fr",
+          "translated": "UNHCR"
+        },
+        {
+          "bbox": [
+            512,
+            244,
+            647,
+            259
+          ],
+          "category": "Page-header",
+          "text": "The UN Refugee Agency",
+          "lang": "fr",
+          "translated": "The UN Refugee Agency"
+        },
+        {
+          "bbox": [
+            119,
+            317,
+            319,
+            335
+          ],
+          "category": "Section-header",
+          "text": "COMMUNIQUE DE PRESSE",
+          "lang": "fr",
+          "translated": "Press Release"
+        },
+        {
+          "bbox": [
+            119,
+            354,
+            693,
+            375
+          ],
+          "category": "Section-header",
+          "text": "Un appel inter-agences pour soutenir les personnes fuyant le Yémen",
+          "lang": "fr",
+          "translated": "Inter-agence calls for support for people fleeing Yemen"
+        },
+        {
+          "bbox": [
+            119,
+            394,
+            905,
+            487
+          ],
+          "category": "Text",
+          "text": "Nairobi, 9 Décembre 2015 - L'Organisation Internationale pour les Migrations (OIM) et le Haut-Commissariat des Nations Unies pour les Réfugiés (HCR) ont lancé un appel inter-agences pour un total de 94.130.731 de dollars américains pour assurer la protection et l'assistance aux réfugiés, rapatriés et migrants fuyant le conflit au Yémen en 2016.",
+          "lang": "fr",
+          "translated": "Nairobi, 9 December 2015 - The International Organization for Migration (OIM) and the United Nations High Commissioner for Refugees (UNHCR) launched an inter-agence call for a total of $94,130,731 to provide protection and assistance to refugees, repatriates and migrants fleeing the conflict in Yemen in 2016."
+        },
+        {
+          "bbox": [
+            119,
+            505,
+            905,
+            598
+          ],
+          "category": "Text",
+          "text": "L'appel a été lancé lors d'une réunion des donateurs à Nairobi aujourd'hui. M. Mohamed Abdulkarim A. Assad, Chargé d'affaires de l'Ambassade du Yémen au Kenya, était l'invité d'honneur de l'événement qui a rassemblé plusieurs participants dont des ambassadeurs, donateurs et représentants de diverses organisations.",
+          "lang": "fr",
+          "translated": "Mr. Mohamed Abdulkarim A. Assad, Business Officer of the Embassy of Yemen in Kenya, was the honorary guest of the event that gathered several participants including ambassadors, donors and representatives of various organizations."
+        },
+        {
+          "bbox": [
+            119,
+            616,
+            904,
+            659
+          ],
+          "category": "Text",
+          "text": "M. Johannes Van Der Klaauw, Coordonnateur humanitaire des Nations Unies au Yémen, a expliqué aux participants les conséquences humanitaires du conflit qui s'est aggravé en Mars 2015.",
+          "lang": "fr",
+          "translated": "Johannes Van Der Klaauw, UN humanitarian coordinator in Yemen, explained to the participants the humanitarian consequences of the conflict that worsened in March 2015."
+        },
+        {
+          "bbox": [
+            119,
+            677,
+            905,
+            746
+          ],
+          "category": "Text",
+          "text": "On estime que 80% de la population a besoin de protection et d'assistance, y inclus les 2.3 millions de personnes déplacées internes. De plus, environ 170,000 Yéménites, réfugiés et ressortissants de pays tiers ont fui le Yemen vers Djibouti, l'Ethiopie, la Somalie, le Soudan et certains pays du Golfe.",
+          "lang": "fr",
+          "translated": "It is estimated that 80% of the population needs protection and assistance, including the 2.3 million internally displaced people. In addition, about 170,000 Yemenians, refugees and third-country nationals fled Yemen to Djibouti, Ethiopia, Somalia, Sudan and some Gulf countries."
+        },
+        {
+          "bbox": [
+            119,
+            764,
+            904,
+            880
+          ],
+          "category": "Text",
+          "text": "«La souffrance que ce conflit inflige aux gens est poignante. J'entends des témoignages directs à chaque fois que je parle aux femmes, aux enfants et aux personnes âgées qui ont entrepris la traversée périlleuse vers Djibouti, L'Ethiopie et la Somalie», a déclaré Mme. Claire Bourgeois, coordinatrice régionale du HCR pour les réfugiés dans le contexte du Yémen. «Les communautés hôtes accueillent généreusement les nouveaux arrivants et partagent avec eux leur maigres ressources».",
+          "lang": "fr",
+          "translated": "I hear direct testimonies every time I speak to women, children and elderly people who have undertaken the dangerous journey to Djibouti, Ethiopia and Somalia,” said Claire Bourgeois, the regional coordinator of the UNHCR for refugees in the context of Yemen."
+        },
+        {
+          "bbox": [
+            119,
+            898,
+            905,
+            966
+          ],
+          "category": "Text",
+          "text": "Elle a salué les pays voisins pour l'octroi d'asile et d'assistance aux réfugiés, rapatriés et migrants, et les donateurs pour leur soutien, et a conclu, «Mais nos efforts conjoints doivent se poursuive et s'intensifier pour que les refugies récupèrent leur droits et puissent mener une vie digne dans le pays d'asile.",
+          "lang": "fr",
+          "translated": "She greeted neighboring countries for asylum and assistance to refugees, repatriates and migrants, and donors for their support, and concluded, “But our joint efforts must continue and intensify so that refugees can recover their rights and lead a decent life in the asylum country."
+        },
+        {
+          "bbox": [
+            119,
+            984,
+            905,
+            1197
+          ],
+          "category": "Text",
+          "text": "L'observateur permanent de l'OIM auprès des Nations Unies à New York, M. Ashraf El Nour, a souligné la nécessité de l'engagement de l'OIM et du HCR aux cotés des gouvernements pour une réponse globale et un dialogue inclusif afin de saisir la migration et la dimension humanitaire de la crise. « La corne de l'Afrique demeure parmi les points chauds des mouvements migratoires mixtes composés de réfugiés, migrants en détresse et de personnes vivant dans l'insécurité alimentaire. Pourtant, en 2015, le financement de la réponse en faveur des nouveaux arrivants est moins que 50 % des besoins estimes. Cela pourrait favoriser un déplacement au delà du premier pays d'accueil», a-t-il déclaré. Sans perspective de solution pacifique, et vu que les besoins humanitaires affaiblissent les capacités des pays touchés, il est temps de donner une dimension régionale à la préparation et la planification d'urgence.",
+          "lang": "fr",
+          "translated": "The IMO’s permanent observer at the United Nations in New York, Mr. Ashraf El Nour, emphasized the need for the IMO and the UNHCR’s commitment to the side of governments for a comprehensive response and inclusive dialogue in order to capture the migration and the humanitarian dimension of the crisis. “The corner of Africa remains among the hot points of mixed migration movements composed of refugees, migrants in trouble and people living in food insecurity. However, in 2015, the financing of the response to new arrivals is less than 50% of the estimated needs. This could promote a shift beyond the first host country,” he said."
+        }
+      ]
+    }
+  ]
+}

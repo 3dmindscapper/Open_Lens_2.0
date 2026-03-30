@@ -8,22 +8,15 @@ import re
 from typing import List, Dict, Any
 
 
-def blocks_to_json(blocks: List[Dict[str, Any]], page_index: int = 0) -> dict:
+def blocks_to_json(
+    blocks: List[Dict[str, Any]],
+    page_index: int = 0,
+    include_translated: bool = True,
+) -> dict:
     """Convert OCR blocks into a JSON-serialisable dict.
 
-    Output format:
-        {
-            "page": 1,
-            "blocks": [
-                {
-                    "bbox": [x1, y1, x2, y2],
-                    "category": "Text",
-                    "text": "...",
-                    "lang": "fr",
-                    "translated": "..."     # present if translation was run
-                }, ...
-            ]
-        }
+    Args:
+        include_translated: If True, include the 'translated' field when present.
     """
     out_blocks = []
     for b in blocks:
@@ -33,14 +26,22 @@ def blocks_to_json(blocks: List[Dict[str, Any]], page_index: int = 0) -> dict:
             "text": b.get("text", ""),
             "lang": b.get("lang", "unknown"),
         }
-        if "translated" in b:
+        if include_translated and "translated" in b:
             entry["translated"] = b["translated"]
         out_blocks.append(entry)
     return {"page": page_index + 1, "blocks": out_blocks}
 
 
-def blocks_to_markdown(blocks: List[Dict[str, Any]], page_index: int = 0) -> str:
+def blocks_to_markdown(
+    blocks: List[Dict[str, Any]],
+    page_index: int = 0,
+    text_key: str = "text",
+) -> str:
     """Convert OCR blocks into a Markdown string preserving document structure.
+
+    Args:
+        text_key: Which block field to use — 'text' for raw OCR output,
+                  'translated' for translated text.
 
     Category mapping:
         Title          → # heading
@@ -60,7 +61,7 @@ def blocks_to_markdown(blocks: List[Dict[str, Any]], page_index: int = 0) -> str
 
     for b in blocks:
         category = b.get("category", "Text")
-        text = b.get("text", "").strip()
+        text = b.get(text_key, b.get("text", "")).strip()
         if not text or category in ("Picture", "Page-header", "Page-footer"):
             continue
 
@@ -108,15 +109,27 @@ def blocks_to_markdown(blocks: List[Dict[str, Any]], page_index: int = 0) -> str
     return "\n".join(lines)
 
 
-def export_all_pages_json(all_blocks: List[List[Dict[str, Any]]]) -> str:
+def export_all_pages_json(
+    all_blocks: List[List[Dict[str, Any]]],
+    include_translated: bool = True,
+) -> str:
     """Combine all pages into a single JSON string."""
-    pages = [blocks_to_json(blocks, i) for i, blocks in enumerate(all_blocks)]
+    pages = [
+        blocks_to_json(blocks, i, include_translated=include_translated)
+        for i, blocks in enumerate(all_blocks)
+    ]
     return json.dumps({"pages": pages}, indent=2, ensure_ascii=False)
 
 
-def export_all_pages_markdown(all_blocks: List[List[Dict[str, Any]]]) -> str:
+def export_all_pages_markdown(
+    all_blocks: List[List[Dict[str, Any]]],
+    text_key: str = "text",
+) -> str:
     """Combine all pages into a single Markdown string."""
-    parts = [blocks_to_markdown(blocks, i) for i, blocks in enumerate(all_blocks)]
+    parts = [
+        blocks_to_markdown(blocks, i, text_key=text_key)
+        for i, blocks in enumerate(all_blocks)
+    ]
     return "\n---\n\n".join(parts)
 
 

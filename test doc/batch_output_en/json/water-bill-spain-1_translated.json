@@ -1,0 +1,429 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "blocks": [
+        {
+          "bbox": [
+            42,
+            16,
+            251,
+            127
+          ],
+          "category": "Page-header",
+          "text": "Sorea",
+          "lang": "ca",
+          "translated": "South Korea"
+        },
+        {
+          "bbox": [
+            962,
+            14,
+            1169,
+            36
+          ],
+          "category": "Page-header",
+          "text": "DADES DEL CONTRACTE",
+          "lang": "ca",
+          "translated": "Data of Contract"
+        },
+        {
+          "bbox": [
+            706,
+            46,
+            1169,
+            150
+          ],
+          "category": "Page-header",
+          "text": "Núm. contracte:\nTitular:\nNIF client:\nAdreça:",
+          "lang": "ca",
+          "translated": "Number of Contract: Titular: NIF client:\nAddress to:"
+        },
+        {
+          "bbox": [
+            967,
+            196,
+            1169,
+            220
+          ],
+          "category": "Page-header",
+          "text": "DADES DE FACTURACIÓ",
+          "lang": "ca",
+          "translated": "Data of invoice"
+        },
+        {
+          "bbox": [
+            706,
+            235,
+            1169,
+            302
+          ],
+          "category": "Page-header",
+          "text": "Núm. factura\nPeríode facturació 2012/06\nData emissió 29-11-2012",
+          "lang": "ca",
+          "translated": "No. invoice Period invoice 2012/06 Date of issuance 29-11-2012"
+        },
+        {
+          "bbox": [
+            104,
+            353,
+            276,
+            383
+          ],
+          "category": "Page-header",
+          "text": "902250070",
+          "lang": "ca",
+          "translated": "902250070"
+        },
+        {
+          "bbox": [
+            288,
+            351,
+            421,
+            383
+          ],
+          "category": "Page-header",
+          "text": "TELÈFON\nD'ATENCIÓ AL CLIENT",
+          "lang": "ca",
+          "translated": "Attention Phone to the Customer"
+        },
+        {
+          "bbox": [
+            104,
+            390,
+            276,
+            420
+          ],
+          "category": "Page-header",
+          "text": "900304070",
+          "lang": "ca",
+          "translated": "900304070"
+        },
+        {
+          "bbox": [
+            288,
+            387,
+            383,
+            420
+          ],
+          "category": "Page-header",
+          "text": "TELÈFON\nD'AVARIES 24h",
+          "lang": "ca",
+          "translated": "24 hours of telephone"
+        },
+        {
+          "bbox": [
+            104,
+            433,
+            475,
+            458
+          ],
+          "category": "Page-header",
+          "text": "www.sorea.cat/cat/torredembarra.asp",
+          "lang": "ca",
+          "translated": "www.sorea.cat/cat/torredembarra.asp"
+        },
+        {
+          "bbox": [
+            44,
+            585,
+            232,
+            608
+          ],
+          "category": "Section-header",
+          "text": "FACTURA BIMESTRAL",
+          "lang": "ca",
+          "translated": "The BIMESTRAL FACTURE"
+        },
+        {
+          "bbox": [
+            44,
+            594,
+            851,
+            902
+          ],
+          "category": "Table",
+          "text": "<table><thead><tr><th></th><th>Quantitat</th><th>Preu unitari</th><th>Import (€)</th><th>IVA (%)</th></tr></thead><tbody><tr><td>SOREA, S.A.<br>AIGUA(EMPADRONAT -40% ) (1)</td><td></td><td></td><td>9,55</td><td></td></tr><tr><td>CONSUM Mínim</td><td>38</td><td>0,2513</td><td>9,55</td><td>10</td></tr><tr><td>CONSERVACIÓ (2)</td><td></td><td></td><td>1,16</td><td></td></tr><tr><td>COMPTADOR/ESCOMESA</td><td></td><td></td><td>1,16</td><td>21</td></tr><tr><td>CLAVEGUERAM(EMPADRONAT -40% ) (3)</td><td></td><td></td><td>5,52</td><td></td></tr><tr><td>CONSUM Mínim</td><td>38</td><td>0,1453</td><td>5,52</td><td>10</td></tr><tr><td>CÀNON AIGUA (4)</td><td></td><td></td><td>4,92</td><td></td></tr><tr><td>CONSUM 1 Tram</td><td>11</td><td>0,4469</td><td>4,92</td><td>10</td></tr><tr><td>I.V.A al 10 % BASE IMPOSABLE: 19,99</td><td></td><td></td><td>2,00</td><td></td></tr><tr><td>I.V.A al 21 % BASE IMPOSABLE: 1,16</td><td></td><td></td><td>0,24</td><td></td></tr><tr><td>SUBTOTAL:</td><td></td><td></td><td>23,39</td><td></td></tr><tr><td>AJUNTAMENT DE TORREDEMBARRA</td><td></td><td></td><td></td><td></td></tr><tr><td>BROSSA (5)</td><td></td><td></td><td>20,75</td><td></td></tr><tr><td>QUOTA DE SERVEI</td><td></td><td></td><td>20,75</td><td>NS</td></tr><tr><td>SUBTOTAL:</td><td></td><td></td><td>20,75</td><td></td></tr></tbody></table>",
+          "lang": "ca",
+          "translated": "<table><thead></th><th>The quantity</th><th>The unit price</th><th>The Import (€)</th><th>The VAT (%)</th></tr></thead><tbody><tr><td>SOREA, S.A.AIGUA(Employed -40% ) (1)</td><td></td><td></td><td>9,55</td><td></td></tr><tr><td>Minimum consumption</td><td>38</td><td>0,2513</td><td>9,55</td><td>10</td></tr><tr><td>The Conservation (2)</td><td></td><td></td><td>1,16</td><td></td></tr><tr><td>Computers / Computers</td><td></td><td></td><td>1,16</td><td>21</td></tr><tr><td>CLAVEGUERAM(Employed -40% ) (3)</td><td></td><td></td><td>5,52</td><td></td></tr><tr><td>Minimum consumption</td><td>38</td><td>0,1453</td><td>5,52</td><td>10</td></tr><tr><td>The Water (4)</td><td></td><td></td><td>4,92</td><td></td></tr><tr><td>The 1 Tram</td><td>11</td><td>0,4469</td><td>4,92</td><td>10</td></tr><tr><td>I.V.A to 10 % BASE IMPOSABLE: 19.99</td><td></td><td></td><td>2,00</td><td></td></tr><tr><td>I.V.A to 21% BASE IMPOSABLE: 1.16</td><td></td><td></td><td>0,24</td><td></td></tr><tr><td>and subjects:</td><td></td><td></td><td>23,39</td><td></td></tr><tr><td>Meeting on Tuesday</td><td></td><td></td><td></td><td></td></tr><tr><td>by BROSSA (5)</td><td></td><td></td><td>20,75</td><td></td></tr><tr><td>Quote of Service</td><td></td><td></td><td>20,75</td><td>NS</td></tr><tr><td>and subjects:</td><td></td><td></td><td>20,75</td><td></td></tr></tbody></table>"
+        },
+        {
+          "bbox": [
+            52,
+            1177,
+            179,
+            1197
+          ],
+          "category": "Text",
+          "text": "CONSUM TOTAL",
+          "lang": "ca",
+          "translated": "Total consumption"
+        },
+        {
+          "bbox": [
+            371,
+            1177,
+            429,
+            1197
+          ],
+          "category": "Text",
+          "text": "9 m3",
+          "lang": "ca",
+          "translated": "9 m3"
+        },
+        {
+          "bbox": [
+            488,
+            1174,
+            628,
+            1197
+          ],
+          "category": "Text",
+          "text": "TOTAL A PAGAR",
+          "lang": "ca",
+          "translated": "Total to pay"
+        },
+        {
+          "bbox": [
+            776,
+            1174,
+            851,
+            1197
+          ],
+          "category": "Text",
+          "text": "44,14 €",
+          "lang": "ca",
+          "translated": "44,14 €"
+        },
+        {
+          "bbox": [
+            52,
+            1232,
+            120,
+            1251
+          ],
+          "category": "Text",
+          "text": "Comptador",
+          "lang": "ca",
+          "translated": "Accounting"
+        },
+        {
+          "bbox": [
+            167,
+            1232,
+            307,
+            1251
+          ],
+          "category": "Text",
+          "text": "Ø mm Lectura anterior",
+          "lang": "ca",
+          "translated": "The previous reading"
+        },
+        {
+          "bbox": [
+            351,
+            1232,
+            439,
+            1251
+          ],
+          "category": "Text",
+          "text": "Lectura actual",
+          "lang": "ca",
+          "translated": "Current reading"
+        },
+        {
+          "bbox": [
+            489,
+            1232,
+            564,
+            1251
+          ],
+          "category": "Text",
+          "text": "Consum m3",
+          "lang": "ca",
+          "translated": "Consumption of m3"
+        },
+        {
+          "bbox": [
+            566,
+            1232,
+            1137,
+            1251
+          ],
+          "category": "Text",
+          "text": "(1, 2) CPC EXP. A-166/11 DE 13/02/2012, (3) BOPT NUM. 151 DE 30/06/2012, (4)",
+          "lang": "ca",
+          "translated": "(1, 2) CPC EXP. A-166/11 DE 13/02/2012, (3) BOPT NUM. 151 DE 30/06/2012, (4)"
+        },
+        {
+          "bbox": [
+            184,
+            1254,
+            305,
+            1271
+          ],
+          "category": "Text",
+          "text": "13 26-09-12 854",
+          "lang": "ca",
+          "translated": "13 26-09-12 854"
+        },
+        {
+          "bbox": [
+            351,
+            1254,
+            448,
+            1271
+          ],
+          "category": "Text",
+          "text": "22-11-12 863",
+          "lang": "ca",
+          "translated": "22-11-12 863"
+        },
+        {
+          "bbox": [
+            551,
+            1249,
+            1089,
+            1268
+          ],
+          "category": "Text",
+          "text": "9 LLEI 5/2012 (DOGC 6094, DE 23-03-2012), (5) BOPT N° 295 DE 23/12/2008",
+          "lang": "ca",
+          "translated": "9 Law 5/2012 (DOGC 6094, DE 23-03-2012), (5) BOPT N° 295 DE 23/12/2008"
+        },
+        {
+          "bbox": [
+            403,
+            1328,
+            577,
+            1391
+          ],
+          "category": "Text",
+          "text": "Què pots fer\ndes del web?",
+          "lang": "ca",
+          "translated": "What can you do from the web?"
+        },
+        {
+          "bbox": [
+            367,
+            1422,
+            577,
+            1437
+          ],
+          "category": "Text",
+          "text": "CONSULTAR ELS TALLS PROGRAMATS",
+          "lang": "ca",
+          "translated": "Consulting the scheduled tables"
+        },
+        {
+          "bbox": [
+            619,
+            1323,
+            1119,
+            1437
+          ],
+          "category": "Text",
+          "text": "Pots consultar si el teu carrer està afectat per un tall de subministrament programat. Aquests talls són interrupcions en el servei que són necessàries per realitzar un manteniment imprescindible a la xarxa de distribució i que podem preveure amb anticipació.",
+          "lang": "ca",
+          "translated": "You can consult if your street is affected by a scheduled supply cutting. These cuts are interruptions in the service that are necessary to perform an essential maintenance on the distribution network and that we can predict in advance."
+        },
+        {
+          "bbox": [
+            619,
+            1445,
+            1113,
+            1465
+          ],
+          "category": "Text",
+          "text": "No s'inclouen els talls de subministrament provocats per avaries inesperades.",
+          "lang": "ca",
+          "translated": "The supply cuts caused by unexpected avaries are not included."
+        },
+        {
+          "bbox": [
+            41,
+            1554,
+            248,
+            1573
+          ],
+          "category": "Section-header",
+          "text": "DADES PER AL PAGAMENT",
+          "lang": "ca",
+          "translated": "Data for Payment"
+        },
+        {
+          "bbox": [
+            41,
+            1584,
+            765,
+            1624
+          ],
+          "category": "Text",
+          "text": "L'import de la factura serà carregat pròximament al compte núm. seguretat. El pagament d'aquesta factura s'acreditarà mitjançant el corresponent càrrec bancari o rebut de caixa",
+          "lang": "ca",
+          "translated": "The amount of the invoice will be charged closely to the security number account. The payment of this invoice will be accredited through the corresponding bank charge or cash receipt"
+        },
+        {
+          "bbox": [
+            901,
+            1581,
+            1069,
+            1602
+          ],
+          "category": "Text",
+          "text": "Digits ocults per a la seva",
+          "lang": "ca",
+          "translated": "Hidden scenes for your"
+        },
+        {
+          "bbox": [
+            1163,
+            1564,
+            1204,
+            1609
+          ],
+          "category": "Page-footer",
+          "text": "Agbar",
+          "lang": "ca",
+          "translated": "by Agbar"
+        },
+        {
+          "bbox": [
+            1159,
+            1609,
+            1204,
+            1632
+          ],
+          "category": "Page-footer",
+          "text": "qualit",
+          "lang": "ca",
+          "translated": "Quality"
+        },
+        {
+          "bbox": [
+            1169,
+            1638,
+            1204,
+            1650
+          ],
+          "category": "Page-footer",
+          "text": "ISO 9001",
+          "lang": "ca",
+          "translated": "by ISO 9001"
+        },
+        {
+          "bbox": [
+            1191,
+            818,
+            1204,
+            1484
+          ],
+          "category": "Page-footer",
+          "text": "Sorea, Socièid Regional de Abasteciment de Agas S.A. - CIF A8146367 - Av. Diagonal 211, 08018 Barcelona - R.M. Barcelona, Tom 27652, Foll 55, Foll 8139, inc. 136",
+          "lang": "ca",
+          "translated": "Sorea, Agas Regional Supply Society S.A. - CIF A8146367 - Av. Diagonal 211, 08018 Barcelona - R.M. Barcelona, Tom 27652, Foll 55, Foll 8139, Inc. 136"
+        }
+      ]
+    }
+  ]
+}

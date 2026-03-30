@@ -11,14 +11,15 @@ Runs entirely on your machine — no internet required after setup, no external 
 2. **Translate** — **M2M-100** (100 languages, any-to-any, MIT license). Two model sizes: 418M (faster) and 1.2B (higher quality). Fully offline after first model download.
 3. **Inpaint** — The original text regions are erased by sampling the surrounding background colour and filling the bounding box.
 4. **Render** — Translated text is drawn back onto the document at the correct position, recovering the original font size via binary search and rendering form-style label/value pairs side-by-side with tab-stop alignment.
-5. **Export** — Output as downloadable translated PDF, plus optional **JSON** and **Markdown** exports for downstream LLM processing.
+5. **Export** — Output as downloadable translated PDF, plus optional **raw or translated JSON/Markdown** exports. Batch mode produces a zip with `translated_docs/`, `json/`, and `markdown/` folders.
 
 ---
 
 ## Features
 
 - **M2M-100 translation** — 100 languages, any-to-any. Two model sizes (418M / 1.2B) switchable from the UI.
-- **JSON & Markdown export** — Toggle raw OCR output as downloadable `.json` (with bboxes, categories, text) or `.md` (structured headings, tables, lists) for downstream LLM pipelines.
+- **4 export formats** — Raw JSON, Translated JSON, Raw Markdown, and Translated Markdown. Raw exports contain original OCR text; translated exports contain M2M-100 output. All include bboxes/layout for LLM pipelines.
+- **Batch processing** — Upload multiple documents at once and receive a zip archive with `translated_docs/`, `json/`, and `markdown/` folders.
 - **Side-by-side comparison** — Gradio UI shows original and translated documents next to each other.
 - **Font size recovery** — Binary-searches the font size that makes the *original* text fit its bounding box, then uses that same size for the translation.
 - **Form / table layout** — Detects alternating label–value line patterns and renders them side-by-side with tab-stop alignment instead of stacking vertically.
@@ -182,6 +183,7 @@ Planned stack: **FastAPI** with background task queue, optional Redis/Celery for
 - ~~M2M-100 translation backend (100 languages)~~ ✅ Done
 - ~~Remove Argos dependency, dual M2M-100 model sizes~~ ✅ Done
 - ~~JSON/Markdown export for LLM pipelines~~ ✅ Done
+- ~~Raw + translated export variants, batch folder processing~~ ✅ Done
 
 ---
 

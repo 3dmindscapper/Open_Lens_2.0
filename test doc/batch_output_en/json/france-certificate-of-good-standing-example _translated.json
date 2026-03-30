@@ -1,0 +1,957 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "blocks": [
+        {
+          "bbox": [
+            34,
+            14,
+            286,
+            29
+          ],
+          "category": "Page-header",
+          "text": "Greffe du Tribunal de Commerce Créteil",
+          "lang": "fr",
+          "translated": "Court of Commerce Créteil"
+        },
+        {
+          "bbox": [
+            34,
+            29,
+            155,
+            41
+          ],
+          "category": "Page-header",
+          "text": "IMMEUBLE LE PASCAL",
+          "lang": "fr",
+          "translated": "The Pascal is immutable"
+        },
+        {
+          "bbox": [
+            34,
+            41,
+            255,
+            54
+          ],
+          "category": "Page-header",
+          "text": "CENTRE COMMERCIAL DE CRETEIL SOLEIL",
+          "lang": "fr",
+          "translated": "Commercial center of solar crystal"
+        },
+        {
+          "bbox": [
+            34,
+            53,
+            149,
+            65
+          ],
+          "category": "Page-header",
+          "text": "94049 CRETEIL CEDEX",
+          "lang": "fr",
+          "translated": "94049 CRETEIL CEDEX"
+        },
+        {
+          "bbox": [
+            34,
+            75,
+            183,
+            90
+          ],
+          "category": "Page-header",
+          "text": "N° de gestion 2021B03153",
+          "lang": "fr",
+          "translated": "Management Number 2021B03153"
+        },
+        {
+          "bbox": [
+            406,
+            30,
+            568,
+            43
+          ],
+          "category": "Page-header",
+          "text": "Code de vérification : kG3Ko0LOE7",
+          "lang": "fr",
+          "translated": "Verification code: kG3Ko0LOE7"
+        },
+        {
+          "bbox": [
+            406,
+            43,
+            566,
+            55
+          ],
+          "category": "Page-header",
+          "text": "https://controle.infogreffe.fr/controle",
+          "lang": "fr",
+          "translated": "HTTPS://controle.infogreffe.fr/controle"
+        },
+        {
+          "bbox": [
+            339,
+            104,
+            414,
+            119
+          ],
+          "category": "Text",
+          "text": "Extrait Kbis",
+          "lang": "fr",
+          "translated": "The Kbis"
+        },
+        {
+          "bbox": [
+            64,
+            139,
+            689,
+            154
+          ],
+          "category": "Section-header",
+          "text": "EXTRAIT D'IMMATRICULATION PRINCIPALE AU REGISTRE DU COMMERCE ET DES SOCIETES",
+          "lang": "fr",
+          "translated": "Principal Immatriculation in the Register of Commerce and Companies"
+        },
+        {
+          "bbox": [
+            299,
+            155,
+            454,
+            170
+          ],
+          "category": "Text",
+          "text": "à jour au 11 septembre 2024",
+          "lang": "ca",
+          "translated": "Updated on September 11, 2024"
+        },
+        {
+          "bbox": [
+            35,
+            197,
+            305,
+            211
+          ],
+          "category": "Section-header",
+          "text": "IDENTIFICATION DE LA PERSONNE MORALE",
+          "lang": "fr",
+          "translated": "Identification of the moral person"
+        },
+        {
+          "bbox": [
+            35,
+            219,
+            216,
+            234
+          ],
+          "category": "Text",
+          "text": "Immatriculation au RCS, numéro",
+          "lang": "fr",
+          "translated": "Registration in the RCS, number"
+        },
+        {
+          "bbox": [
+            308,
+            218,
+            400,
+            234
+          ],
+          "category": "Text",
+          "text": "***Redacted***",
+          "lang": "fr",
+          "translated": "Edited"
+        },
+        {
+          "bbox": [
+            35,
+            238,
+            162,
+            253
+          ],
+          "category": "Text",
+          "text": "Date d'immatriculation",
+          "lang": "fr",
+          "translated": "Date of Registration"
+        },
+        {
+          "bbox": [
+            308,
+            238,
+            372,
+            253
+          ],
+          "category": "Text",
+          "text": "10/04/2008",
+          "lang": "fr",
+          "translated": "10/04/2008"
+        },
+        {
+          "bbox": [
+            35,
+            257,
+            174,
+            271
+          ],
+          "category": "Text",
+          "text": "Immatriculation radiée le",
+          "lang": "fr",
+          "translated": "Registration is radiated"
+        },
+        {
+          "bbox": [
+            308,
+            257,
+            372,
+            271
+          ],
+          "category": "Text",
+          "text": "27/06/2024",
+          "lang": "fr",
+          "translated": "27/06/2024"
+        },
+        {
+          "bbox": [
+            35,
+            284,
+            209,
+            299
+          ],
+          "category": "Text",
+          "text": "Dénomination ou raison sociale",
+          "lang": "fr",
+          "translated": "Name or Social Reason"
+        },
+        {
+          "bbox": [
+            308,
+            283,
+            403,
+            299
+          ],
+          "category": "Text",
+          "text": "***Redacted***",
+          "lang": "fr",
+          "translated": "Edited"
+        },
+        {
+          "bbox": [
+            35,
+            303,
+            126,
+            318
+          ],
+          "category": "Text",
+          "text": "Forme juridique",
+          "lang": "fr",
+          "translated": "The legal form"
+        },
+        {
+          "bbox": [
+            308,
+            303,
+            468,
+            318
+          ],
+          "category": "Text",
+          "text": "Société par actions simplifiée",
+          "lang": "fr",
+          "translated": "Simplified shareholders"
+        },
+        {
+          "bbox": [
+            35,
+            322,
+            114,
+            337
+          ],
+          "category": "Text",
+          "text": "Capital social",
+          "lang": "fr",
+          "translated": "Social Capital"
+        },
+        {
+          "bbox": [
+            308,
+            322,
+            393,
+            337
+          ],
+          "category": "Text",
+          "text": "6 000,00 Euros",
+          "lang": "fr",
+          "translated": "6,000 Euros"
+        },
+        {
+          "bbox": [
+            35,
+            350,
+            126,
+            365
+          ],
+          "category": "Text",
+          "text": "Adresse du siège",
+          "lang": "ca",
+          "translated": "Address of the seat"
+        },
+        {
+          "bbox": [
+            308,
+            350,
+            548,
+            365
+          ],
+          "category": "Text",
+          "text": "7 Boulevard des Alliés 94600 Choisy-le-Roi",
+          "lang": "fr",
+          "translated": "7 Boulevard of the Allies 94600 Choisy-le-Roi"
+        },
+        {
+          "bbox": [
+            35,
+            378,
+            194,
+            393
+          ],
+          "category": "Text",
+          "text": "Durée de la personne morale",
+          "lang": "fr",
+          "translated": "The duration of the legal person"
+        },
+        {
+          "bbox": [
+            308,
+            378,
+            419,
+            393
+          ],
+          "category": "Text",
+          "text": "Jusqu'au 10/04/2107",
+          "lang": "fr",
+          "translated": "Up to 10/04/2107"
+        },
+        {
+          "bbox": [
+            35,
+            396,
+            227,
+            411
+          ],
+          "category": "Text",
+          "text": "Date de clôture de l'exercice social",
+          "lang": "fr",
+          "translated": "Date of closing of the Social Exercise"
+        },
+        {
+          "bbox": [
+            308,
+            396,
+            384,
+            411
+          ],
+          "category": "Text",
+          "text": "30 septembre",
+          "lang": "fr",
+          "translated": "30 September"
+        },
+        {
+          "bbox": [
+            35,
+            429,
+            510,
+            444
+          ],
+          "category": "Section-header",
+          "text": "GESTION, DIRECTION, ADMINISTRATION, CONTROLE, ASSOCIES OU MEMBRES",
+          "lang": "fr",
+          "translated": "Management, Management, Administration, Control, Associations or Members"
+        },
+        {
+          "bbox": [
+            35,
+            452,
+            91,
+            467
+          ],
+          "category": "Section-header",
+          "text": "Président",
+          "lang": "fr",
+          "translated": "President"
+        },
+        {
+          "bbox": [
+            73,
+            471,
+            154,
+            486
+          ],
+          "category": "Text",
+          "text": "Nom, prénoms",
+          "lang": "fr",
+          "translated": "Name and Names"
+        },
+        {
+          "bbox": [
+            308,
+            471,
+            482,
+            486
+          ],
+          "category": "Text",
+          "text": "GOVART Patrick Jean-Baptiste",
+          "lang": "fr",
+          "translated": "by GOVART Patrick Jean-Baptiste"
+        },
+        {
+          "bbox": [
+            73,
+            489,
+            209,
+            504
+          ],
+          "category": "Text",
+          "text": "Date et lieu de naissance",
+          "lang": "fr",
+          "translated": "Date and place of birth"
+        },
+        {
+          "bbox": [
+            308,
+            489,
+            482,
+            504
+          ],
+          "category": "Text",
+          "text": "Le 14/09/1964 à Metz (57)",
+          "lang": "ca",
+          "translated": "Le 14/09/1964 at Metz (57)"
+        },
+        {
+          "bbox": [
+            73,
+            508,
+            136,
+            523
+          ],
+          "category": "Text",
+          "text": "Nationalité",
+          "lang": "fr",
+          "translated": "nationality"
+        },
+        {
+          "bbox": [
+            308,
+            508,
+            364,
+            523
+          ],
+          "category": "Text",
+          "text": "Française",
+          "lang": "ca",
+          "translated": "French"
+        },
+        {
+          "bbox": [
+            73,
+            527,
+            181,
+            542
+          ],
+          "category": "Text",
+          "text": "Domicile personnel",
+          "lang": "fr",
+          "translated": "personal home"
+        },
+        {
+          "bbox": [
+            308,
+            527,
+            560,
+            542
+          ],
+          "category": "Text",
+          "text": "78 Rue Gabriel Péri 78420 Carrières-sur-Seine",
+          "lang": "fr",
+          "translated": "78 Rue Gabriel Péri 78420 Carrières-sur-Seine"
+        },
+        {
+          "bbox": [
+            35,
+            545,
+            136,
+            561
+          ],
+          "category": "Section-header",
+          "text": "Directeur général",
+          "lang": "fr",
+          "translated": "Director General"
+        },
+        {
+          "bbox": [
+            73,
+            565,
+            154,
+            580
+          ],
+          "category": "Text",
+          "text": "Nom, prénoms",
+          "lang": "fr",
+          "translated": "Name and Names"
+        },
+        {
+          "bbox": [
+            308,
+            565,
+            429,
+            580
+          ],
+          "category": "Text",
+          "text": "JAMET Jean François",
+          "lang": "ca",
+          "translated": "by James Jean François"
+        },
+        {
+          "bbox": [
+            73,
+            583,
+            209,
+            598
+          ],
+          "category": "Text",
+          "text": "Date et lieu de naissance",
+          "lang": "fr",
+          "translated": "Date and place of birth"
+        },
+        {
+          "bbox": [
+            308,
+            583,
+            567,
+            598
+          ],
+          "category": "Text",
+          "text": "Le 11/04/1963 à Paris 14e Arrondissement (75)",
+          "lang": "ca",
+          "translated": "Le 11/04/1963 à Paris 14e Arrondissement (75)"
+        },
+        {
+          "bbox": [
+            73,
+            602,
+            136,
+            617
+          ],
+          "category": "Text",
+          "text": "Nationalité",
+          "lang": "fr",
+          "translated": "nationality"
+        },
+        {
+          "bbox": [
+            308,
+            602,
+            364,
+            617
+          ],
+          "category": "Text",
+          "text": "Française",
+          "lang": "ca",
+          "translated": "French"
+        },
+        {
+          "bbox": [
+            73,
+            621,
+            181,
+            636
+          ],
+          "category": "Text",
+          "text": "Domicile personnel",
+          "lang": "fr",
+          "translated": "personal home"
+        },
+        {
+          "bbox": [
+            308,
+            621,
+            553,
+            636
+          ],
+          "category": "Text",
+          "text": "2 Allée du Clos de la Roseraie 94520 Périgny",
+          "lang": "fr",
+          "translated": "2 Clos de la Roseraie 94520 Périgny"
+        },
+        {
+          "bbox": [
+            35,
+            653,
+            516,
+            668
+          ],
+          "category": "Section-header",
+          "text": "RENSEIGNEMENTS RELATIFS A L'ACTIVITE ET A L'ETABLISSEMENT PRINCIPAL",
+          "lang": "fr",
+          "translated": "Reporting on the main activity and establishment"
+        },
+        {
+          "bbox": [
+            35,
+            676,
+            179,
+            691
+          ],
+          "category": "Text",
+          "text": "Adresse de l'établissement",
+          "lang": "fr",
+          "translated": "Address of the institution"
+        },
+        {
+          "bbox": [
+            308,
+            676,
+            548,
+            691
+          ],
+          "category": "Text",
+          "text": "7 Boulevard des Alliés 94600 Choisy-le-Roi",
+          "lang": "fr",
+          "translated": "7 Boulevard of the Allies 94600 Choisy-le-Roi"
+        },
+        {
+          "bbox": [
+            35,
+            704,
+            133,
+            719
+          ],
+          "category": "Text",
+          "text": "Nom commercial",
+          "lang": "fr",
+          "translated": "The commercial name"
+        },
+        {
+          "bbox": [
+            308,
+            704,
+            400,
+            719
+          ],
+          "category": "Text",
+          "text": "***Redacted***",
+          "lang": "fr",
+          "translated": "Edited"
+        },
+        {
+          "bbox": [
+            35,
+            732,
+            149,
+            747
+          ],
+          "category": "Text",
+          "text": "Activité(s) exercée(s)",
+          "lang": "fr",
+          "translated": "Activity(s) performed"
+        },
+        {
+          "bbox": [
+            308,
+            732,
+            485,
+            747
+          ],
+          "category": "Text",
+          "text": "Pratique de l'exercice vétérinaire",
+          "lang": "fr",
+          "translated": "Practice of Veterinary Exercise"
+        },
+        {
+          "bbox": [
+            35,
+            751,
+            216,
+            766
+          ],
+          "category": "Text",
+          "text": "Date de commencement d'activité",
+          "lang": "fr",
+          "translated": "Date of start of activity"
+        },
+        {
+          "bbox": [
+            308,
+            751,
+            372,
+            766
+          ],
+          "category": "Text",
+          "text": "01/04/2008",
+          "lang": "fr",
+          "translated": "01/04/2008"
+        },
+        {
+          "bbox": [
+            35,
+            779,
+            373,
+            794
+          ],
+          "category": "Text",
+          "text": "En attente de la production de la pièce justifiant de la capacité",
+          "lang": "fr",
+          "translated": "In waiting for the production of the piece justified capacity"
+        },
+        {
+          "bbox": [
+            35,
+            807,
+            209,
+            822
+          ],
+          "category": "Text",
+          "text": "Origine du fonds ou de l'activité",
+          "lang": "fr",
+          "translated": "Origin of the fund or activity"
+        },
+        {
+          "bbox": [
+            308,
+            807,
+            358,
+            822
+          ],
+          "category": "Text",
+          "text": "Création",
+          "lang": "fr",
+          "translated": "Creation"
+        },
+        {
+          "bbox": [
+            35,
+            835,
+            145,
+            850
+          ],
+          "category": "Text",
+          "text": "Mode d'exploitation",
+          "lang": "fr",
+          "translated": "Method of operation"
+        },
+        {
+          "bbox": [
+            308,
+            835,
+            416,
+            850
+          ],
+          "category": "Text",
+          "text": "Exploitation directe",
+          "lang": "fr",
+          "translated": "Direct exploitation"
+        },
+        {
+          "bbox": [
+            35,
+            868,
+            520,
+            883
+          ],
+          "category": "Section-header",
+          "text": "RENSEIGNEMENTS RELATIFS AUX AUTRES ETABLISSEMENTS DANS LE RESSORT",
+          "lang": "fr",
+          "translated": "Information on other statements in the resource"
+        },
+        {
+          "bbox": [
+            35,
+            890,
+            179,
+            905
+          ],
+          "category": "Text",
+          "text": "Adresse de l'établissement",
+          "lang": "fr",
+          "translated": "Address of the institution"
+        },
+        {
+          "bbox": [
+            308,
+            890,
+            538,
+            905
+          ],
+          "category": "Text",
+          "text": "47 Rue de Paris 94470 Boissy-Saint-Léger",
+          "lang": "fr",
+          "translated": "47 Rue de Paris 94470 Boissy-Saint-Léger"
+        },
+        {
+          "bbox": [
+            35,
+            918,
+            149,
+            933
+          ],
+          "category": "Text",
+          "text": "Activité(s) exercée(s)",
+          "lang": "fr",
+          "translated": "Activity(s) performed"
+        },
+        {
+          "bbox": [
+            308,
+            918,
+            416,
+            933
+          ],
+          "category": "Text",
+          "text": "Clinique vétérinaire",
+          "lang": "fr",
+          "translated": "Veterinary Clinic"
+        },
+        {
+          "bbox": [
+            35,
+            937,
+            216,
+            952
+          ],
+          "category": "Text",
+          "text": "Date de commencement d'activité",
+          "lang": "fr",
+          "translated": "Date of start of activity"
+        },
+        {
+          "bbox": [
+            308,
+            937,
+            372,
+            952
+          ],
+          "category": "Text",
+          "text": "31/01/2011",
+          "lang": "fr",
+          "translated": "31/01/2011"
+        },
+        {
+          "bbox": [
+            35,
+            965,
+            209,
+            980
+          ],
+          "category": "Text",
+          "text": "Origine du fonds ou de l'activité",
+          "lang": "fr",
+          "translated": "Origin of the fund or activity"
+        },
+        {
+          "bbox": [
+            308,
+            965,
+            358,
+            980
+          ],
+          "category": "Text",
+          "text": "Création",
+          "lang": "fr",
+          "translated": "Creation"
+        },
+        {
+          "bbox": [
+            35,
+            993,
+            145,
+            1008
+          ],
+          "category": "Text",
+          "text": "Mode d'exploitation",
+          "lang": "fr",
+          "translated": "Method of operation"
+        },
+        {
+          "bbox": [
+            308,
+            993,
+            416,
+            1008
+          ],
+          "category": "Text",
+          "text": "Exploitation directe",
+          "lang": "fr",
+          "translated": "Direct exploitation"
+        },
+        {
+          "bbox": [
+            35,
+            1021,
+            179,
+            1036
+          ],
+          "category": "Text",
+          "text": "Adresse de l'établissement",
+          "lang": "fr",
+          "translated": "Address of the institution"
+        },
+        {
+          "bbox": [
+            308,
+            1021,
+            655,
+            1036
+          ],
+          "category": "Text",
+          "text": "Centre Commercial Village 3 Rue de la Résistance 94320 Thiais",
+          "lang": "fr",
+          "translated": "Commercial Centre Village 3 Rue de la Resistance 94320 Thiais"
+        },
+        {
+          "bbox": [
+            35,
+            1049,
+            149,
+            1064
+          ],
+          "category": "Text",
+          "text": "Activité(s) exercée(s)",
+          "lang": "fr",
+          "translated": "Activity(s) performed"
+        },
+        {
+          "bbox": [
+            308,
+            1049,
+            416,
+            1064
+          ],
+          "category": "Text",
+          "text": "Clinique vétérinaire",
+          "lang": "fr",
+          "translated": "Veterinary Clinic"
+        },
+        {
+          "bbox": [
+            20,
+            1074,
+            174,
+            1116
+          ],
+          "category": "Page-footer",
+          "text": "Example",
+          "lang": "fr",
+          "translated": "Example"
+        },
+        {
+          "bbox": [
+            578,
+            1055,
+            763,
+            1116
+          ],
+          "category": "Page-footer",
+          "text": "Company Documents from SystemDay",
+          "lang": "fr",
+          "translated": "Company Documents from SystemDay"
+        }
+      ]
+    }
+  ]
+}

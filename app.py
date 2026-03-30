@@ -8,8 +8,10 @@ import base64
 import io
 import os
 import re
+import shutil
 import tempfile
 import traceback
+import zipfile
 from pathlib import Path
 from typing import Optional, Tuple, List
 
@@ -398,22 +400,23 @@ def process_document(
     file_obj,
     target_lang_name: str,
     model_name: str,
-    export_json: bool,
-    export_md: bool,
+    export_raw_json: bool,
+    export_translated_json: bool,
+    export_raw_md: bool,
+    export_translated_md: bool,
     progress=gr.Progress(track_tqdm=True),
 ):
     """
     Main pipeline function called by Gradio.
 
     Returns:
-        - preview_html: HTML string with side-by-side selectable-text preview
-        - output_file: path to the downloadable translated PDF
-        - json_file: path to JSON export (or None)
-        - md_file: path to Markdown export (or None)
-        - status: status message string
+        - preview_html, output_file,
+        - raw_json_file, translated_json_file,
+        - raw_md_file, translated_md_file,
+        - status
     """
     if file_obj is None:
-        return None, None, None, None, "⚠️ Please upload a file first."
+        return None, None, None, None, None, None, "⚠️ Please upload a file first."
 
     # Set translation model size
     _model_map = {
@@ -478,23 +481,39 @@ def process_document(
         out_path = str(OUTPUT_DIR / out_name)
         images_to_pdf(translated_pages, out_path)
 
-        # ── Step 7: Optional JSON/Markdown exports ────────────────────────────
-        json_path = None
-        md_path = None
+        # ── Step 7: Optional exports ─────────────────────────────────────────
+        raw_json_path = None
+        translated_json_path = None
+        raw_md_path = None
+        translated_md_path = None
 
-        if export_json:
-            json_name = stem + "_ocr_output.json"
-            json_path = str(OUTPUT_DIR / json_name)
-            with open(json_path, "w", encoding="utf-8") as f:
-                f.write(export_all_pages_json(all_blocks))
-            status_lines.append(f"📋 JSON export saved.")
+        if export_raw_json:
+            p = str(OUTPUT_DIR / (stem + "_ocr_raw.json"))
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_json(all_blocks, include_translated=False))
+            raw_json_path = p
+            status_lines.append("📋 Raw JSON export saved.")
 
-        if export_md:
-            md_name = stem + "_ocr_output.md"
-            md_path = str(OUTPUT_DIR / md_name)
-            with open(md_path, "w", encoding="utf-8") as f:
-                f.write(export_all_pages_markdown(all_blocks))
-            status_lines.append(f"📝 Markdown export saved.")
+        if export_translated_json:
+            p = str(OUTPUT_DIR / (stem + "_ocr_translated.json"))
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_json(all_blocks, include_translated=True))
+            translated_json_path = p
+            status_lines.append("📋 Translated JSON export saved.")
+
+        if export_raw_md:
+            p = str(OUTPUT_DIR / (stem + "_ocr_raw.md"))
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_markdown(all_blocks, text_key="text"))
+            raw_md_path = p
+            status_lines.append("📝 Raw Markdown export saved.")
+
+        if export_translated_md:
+            p = str(OUTPUT_DIR / (stem + "_ocr_translated.md"))
+            with open(p, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_markdown(all_blocks, text_key="translated"))
+            translated_md_path = p
+            status_lines.append("📝 Translated Markdown export saved.")
 
         progress(0.96, desc="Building preview...")
         preview = _build_preview_html(original_pages, translated_pages, all_blocks)
@@ -502,12 +521,129 @@ def process_document(
         progress(1.0, desc="Done.")
         status_lines.append(f"\n✅ Done! Output saved to: {out_path}")
 
-        return preview, out_path, json_path, md_path, "\n".join(status_lines)
+        return (preview, out_path,
+                raw_json_path, translated_json_path,
+                raw_md_path, translated_md_path,
+                "\n".join(status_lines))
 
     except Exception:
         err = traceback.format_exc()
         print(err)
-        return None, None, None, None, f"❌ Error:\n{err}"
+        return None, None, None, None, None, None, f"❌ Error:\n{err}"
+
+
+BATCH_DIR = Path(tempfile.gettempdir()) / "openlens2_batch"
+BATCH_DIR.mkdir(parents=True, exist_ok=True)
+
+SUPPORTED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
+
+
+def process_batch(
+    file_list,
+    target_lang_name: str,
+    model_name: str,
+    progress=gr.Progress(track_tqdm=True),
+):
+    """
+    Batch-process multiple documents.
+
+    Creates an output zip with three folders:
+        translated_docs/   — translated PDFs
+        json/              — translated JSON exports
+        markdown/          — translated Markdown exports
+    """
+    if not file_list:
+        return None, "⚠️ Please upload files first."
+
+    _model_map = {
+        "M2M-100 418M (Faster)": "m2m100_418m",
+        "M2M-100 1.2B (Better Quality)": "m2m100_1.2b",
+    }
+    set_model(_model_map.get(model_name, "m2m100_418m"))
+    tgt_code = TARGET_LANGUAGES.get(target_lang_name, "en")
+
+    # Clean batch output dir
+    batch_out = BATCH_DIR / f"batch_{tgt_code}"
+    if batch_out.exists():
+        shutil.rmtree(batch_out)
+    (batch_out / "translated_docs").mkdir(parents=True)
+    (batch_out / "json").mkdir(parents=True)
+    (batch_out / "markdown").mkdir(parents=True)
+
+    # Resolve file paths
+    paths = []
+    for f in file_list:
+        fp = f.name if hasattr(f, "name") else str(f)
+        if Path(fp).suffix.lower() in SUPPORTED_EXTENSIONS:
+            paths.append(fp)
+
+    if not paths:
+        return None, "⚠️ No supported files found (.pdf, .jpg, .png, .webp)."
+
+    status_lines = [
+        f"📂 Batch processing {len(paths)} file(s)...",
+        f"🔤 Model: M2M-100 {get_model().upper()}",
+        f"🌐 Target: {target_lang_name} ({tgt_code})",
+        "",
+    ]
+
+    for fi, file_path in enumerate(paths):
+        stem = Path(file_path).stem
+        file_label = f"[{fi+1}/{len(paths)}] {Path(file_path).name}"
+        progress((fi / len(paths)) * 0.95, desc=f"Processing {file_label}...")
+        status_lines.append(f"📄 {file_label}")
+
+        try:
+            pages = load_document(file_path)
+            translated_pages = []
+            all_blocks = []
+
+            for i, page_img in enumerate(pages):
+                blocks = run_ocr(page_img)
+                if not blocks:
+                    translated_pages.append(page_img)
+                    all_blocks.append([])
+                    continue
+
+                blocks = translate_blocks(blocks, tgt_lang=tgt_code)
+                inpainted = erase_text_blocks(page_img, blocks)
+                rendered = render_translations(inpainted, page_img, blocks)
+                translated_pages.append(rendered)
+                all_blocks.append(blocks)
+
+            # Save translated PDF
+            pdf_path = str(batch_out / "translated_docs" / f"{stem}_translated_{tgt_code}.pdf")
+            images_to_pdf(translated_pages, pdf_path)
+
+            # Save translated JSON
+            json_path = str(batch_out / "json" / f"{stem}_translated.json")
+            with open(json_path, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_json(all_blocks, include_translated=True))
+
+            # Save translated Markdown
+            md_path = str(batch_out / "markdown" / f"{stem}_translated.md")
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_markdown(all_blocks, text_key="translated"))
+
+            status_lines.append(f"   ✅ {len(pages)} page(s) processed.")
+
+        except Exception as e:
+            status_lines.append(f"   ❌ Error: {e}")
+            continue
+
+    # Zip the output
+    progress(0.96, desc="Creating zip archive...")
+    zip_path = str(BATCH_DIR / f"batch_output_{tgt_code}.zip")
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(batch_out):
+            for fname in files:
+                abs_path = os.path.join(root, fname)
+                arc_name = os.path.relpath(abs_path, batch_out)
+                zf.write(abs_path, arc_name)
+
+    progress(1.0, desc="Done.")
+    status_lines.append(f"\n✅ Batch complete! {len(paths)} file(s) processed.")
+    return zip_path, "\n".join(status_lines)
 
 
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
@@ -523,72 +659,141 @@ with gr.Blocks(
         """
     )
 
-    with gr.Row():
-        with gr.Column(scale=1):
-            file_input = gr.File(
-                label="Upload document",
-                file_types=[".pdf", ".jpg", ".jpeg", ".png", ".webp"],
-                type="filepath",
+    with gr.Tabs():
+        # ── Tab 1: Single Document ────────────────────────────────────────────
+        with gr.TabItem("📄 Single Document"):
+            with gr.Row():
+                with gr.Column(scale=1):
+                    file_input = gr.File(
+                        label="Upload document",
+                        file_types=[".pdf", ".jpg", ".jpeg", ".png", ".webp"],
+                        type="filepath",
+                    )
+                    lang_dropdown = gr.Dropdown(
+                        choices=list(TARGET_LANGUAGES.keys()),
+                        value="English",
+                        label="Translate to",
+                    )
+                    backend_dropdown = gr.Dropdown(
+                        choices=["M2M-100 418M (Faster)", "M2M-100 1.2B (Better Quality)"],
+                        value="M2M-100 418M (Faster)",
+                        label="Translation model",
+                        info="418M: faster, less VRAM. 1.2B: higher quality, needs ~5 GB VRAM.",
+                    )
+
+                    gr.Markdown("**Export options:**")
+                    with gr.Row():
+                        export_raw_json_cb = gr.Checkbox(
+                            label="Raw JSON", value=False,
+                            info="Original OCR text with bboxes",
+                        )
+                        export_translated_json_cb = gr.Checkbox(
+                            label="Translated JSON", value=False,
+                            info="OCR + translated text with bboxes",
+                        )
+                    with gr.Row():
+                        export_raw_md_cb = gr.Checkbox(
+                            label="Raw Markdown", value=False,
+                            info="Original text — headings, tables, lists",
+                        )
+                        export_translated_md_cb = gr.Checkbox(
+                            label="Translated Markdown", value=False,
+                            info="Translated text — headings, tables, lists",
+                        )
+
+                    submit_btn = gr.Button("🚀 Translate", variant="primary")
+
+                with gr.Column(scale=2):
+                    status_box = gr.Textbox(
+                        label="Status",
+                        lines=6,
+                        interactive=False,
+                        placeholder="Upload a file and click Translate...",
+                    )
+                    download_btn = gr.File(
+                        label="📥 Download translated PDF",
+                        interactive=False,
+                    )
+                    with gr.Row():
+                        download_raw_json = gr.File(
+                            label="📋 Raw JSON", interactive=False,
+                        )
+                        download_translated_json = gr.File(
+                            label="📋 Translated JSON", interactive=False,
+                        )
+                    with gr.Row():
+                        download_raw_md = gr.File(
+                            label="📝 Raw Markdown", interactive=False,
+                        )
+                        download_translated_md = gr.File(
+                            label="📝 Translated Markdown", interactive=False,
+                        )
+
+            gr.Markdown(
+                "### Preview (original ← | → translated)  \n"
+                "*Hover over text on the translated side to highlight — "
+                "select and copy translated text directly.*"
             )
-            lang_dropdown = gr.Dropdown(
-                choices=list(TARGET_LANGUAGES.keys()),
-                value="English",
-                label="Translate to",
+            preview_html = gr.HTML(label="Preview")
+
+            submit_btn.click(
+                fn=process_document,
+                inputs=[file_input, lang_dropdown, backend_dropdown,
+                        export_raw_json_cb, export_translated_json_cb,
+                        export_raw_md_cb, export_translated_md_cb],
+                outputs=[preview_html, download_btn,
+                         download_raw_json, download_translated_json,
+                         download_raw_md, download_translated_md,
+                         status_box],
             )
-            backend_dropdown = gr.Dropdown(
-                choices=["M2M-100 418M (Faster)", "M2M-100 1.2B (Better Quality)"],
-                value="M2M-100 418M (Faster)",
-                label="Translation model",
-                info="418M: faster, less VRAM. 1.2B: higher quality, needs ~5 GB VRAM.",
+
+        # ── Tab 2: Batch Processing ──────────────────────────────────────────
+        with gr.TabItem("📂 Batch Processing"):
+            gr.Markdown(
+                "Upload multiple documents at once. Each file is translated "
+                "and the output is a **zip archive** with three folders:\n"
+                "- `translated_docs/` — translated PDFs\n"
+                "- `json/` — translated JSON (OCR + translations)\n"
+                "- `markdown/` — translated Markdown\n"
             )
 
             with gr.Row():
-                export_json_cb = gr.Checkbox(
-                    label="Export JSON", value=False,
-                    info="Raw OCR blocks with bboxes — for LLM pipelines",
-                )
-                export_md_cb = gr.Checkbox(
-                    label="Export Markdown", value=False,
-                    info="Structured document text — headings, tables, lists",
-                )
+                with gr.Column(scale=1):
+                    batch_input = gr.File(
+                        label="Upload documents",
+                        file_types=[".pdf", ".jpg", ".jpeg", ".png", ".webp"],
+                        file_count="multiple",
+                        type="filepath",
+                    )
+                    batch_lang = gr.Dropdown(
+                        choices=list(TARGET_LANGUAGES.keys()),
+                        value="English",
+                        label="Translate to",
+                    )
+                    batch_model = gr.Dropdown(
+                        choices=["M2M-100 418M (Faster)", "M2M-100 1.2B (Better Quality)"],
+                        value="M2M-100 418M (Faster)",
+                        label="Translation model",
+                    )
+                    batch_btn = gr.Button("🚀 Process Batch", variant="primary")
 
-            submit_btn = gr.Button("🚀 Translate", variant="primary")
+                with gr.Column(scale=2):
+                    batch_status = gr.Textbox(
+                        label="Status",
+                        lines=12,
+                        interactive=False,
+                        placeholder="Upload files and click Process Batch...",
+                    )
+                    batch_download = gr.File(
+                        label="📥 Download batch output (.zip)",
+                        interactive=False,
+                    )
 
-        with gr.Column(scale=2):
-            status_box = gr.Textbox(
-                label="Status",
-                lines=6,
-                interactive=False,
-                placeholder="Upload a file and click Translate...",
+            batch_btn.click(
+                fn=process_batch,
+                inputs=[batch_input, batch_lang, batch_model],
+                outputs=[batch_download, batch_status],
             )
-            download_btn = gr.File(
-                label="📥 Download translated PDF",
-                interactive=False,
-            )
-            with gr.Row():
-                download_json = gr.File(
-                    label="📋 JSON export",
-                    interactive=False,
-                )
-                download_md = gr.File(
-                    label="📝 Markdown export",
-                    interactive=False,
-                )
-
-    gr.Markdown(
-        "### Preview (original ← | → translated)  \n"
-        "*Hover over text on the translated side to highlight — "
-        "select and copy translated text directly.*"
-    )
-    preview_html = gr.HTML(label="Preview")
-
-    submit_btn.click(
-        fn=process_document,
-        inputs=[file_input, lang_dropdown, backend_dropdown,
-                export_json_cb, export_md_cb],
-        outputs=[preview_html, download_btn, download_json,
-                 download_md, status_box],
-    )
 
     gr.Markdown(
         """
@@ -601,8 +806,7 @@ with gr.Blocks(
         - CPU-only machines may take 20–60 seconds per page.
         - For best results, use clear high-resolution scans (150 DPI+).
         - Hover over translated text to highlight it; select to copy.
-        - **JSON/Markdown exports** contain the raw OCR output
-          with bounding boxes — useful for downstream LLM processing.
+        - **Batch mode** produces a zip with translated PDFs, JSON, and Markdown.
         """
     )
 
