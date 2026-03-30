@@ -1,60 +1,27 @@
 """
-translate.py — Local translation using Argos Translate.
+translate.py — Translation via M2M-100 (MIT license, 100 languages, any-to-any).
 
-Language packs are downloaded automatically on first use.
-No internet connection required after initial pack download.
+Model sizes selectable from the UI:
+  - m2m100_418m (default): ~1.7 GB, faster, good for CPU or limited VRAM
+  - m2m100_1.2b: ~4.9 GB, higher quality, needs more memory
 """
 import re
 from typing import List, Dict, Any
-import argostranslate.package
-import argostranslate.translate
-
-# Cache installed language pairs to avoid repeated lookups
-_installed_pairs: set = set()
-_initialized = False
 
 
-def _init():
-    global _initialized
-    if _initialized:
-        return
-    argostranslate.package.update_package_index()
-    _initialized = True
+def set_model(key: str):
+    """Switch M2M-100 model size. Valid: 'm2m100_418m', 'm2m100_1.2b'."""
+    from pipeline.translate_m2m import set_model as _set
+    _set(key)
 
 
-def _ensure_lang_pack(src: str, tgt: str):
-    """Download and install the language pack if not already present."""
-    pair_key = f"{src}->{tgt}"
-    if pair_key in _installed_pairs:
-        return
-
-    installed = argostranslate.translate.get_installed_languages()
-    installed_codes = {lang.code for lang in installed}
-
-    if src in installed_codes and tgt in installed_codes:
-        _installed_pairs.add(pair_key)
-        return
-
-    print(f"[Translate] Downloading language pack: {src} → {tgt}...")
-    _init()
-    available = argostranslate.package.get_available_packages()
-    pkg = next(
-        (p for p in available if p.from_code == src and p.to_code == tgt),
-        None,
-    )
-    if pkg is None:
-        # Try via English as pivot (src→en→tgt)
-        raise ValueError(
-            f"No direct Argos language pack for {src}→{tgt}. "
-            f"Try installing manually: argospm install translate-{src}_{tgt}"
-        )
-    argostranslate.package.install_from_path(pkg.download())
-    _installed_pairs.add(pair_key)
-    print(f"[Translate] Pack installed: {src} → {tgt}")
+def get_model() -> str:
+    from pipeline.translate_m2m import get_model as _get
+    return _get()
 
 
 def _strip_markdown(text: str) -> str:
-    """Strip markdown formatting before translation so Argos sees clean text."""
+    """Strip markdown formatting before translation."""
     text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)
     text = re.sub(r'\*{3}(.+?)\*{3}', r'\1', text)
     text = re.sub(r'_{3}(.+?)_{3}', r'\1', text)
@@ -70,142 +37,95 @@ def _strip_html(text: str) -> str:
     dots.mocr outputs Table blocks as HTML.  We convert row/cell boundaries
     to newlines so the text preserves structure instead of becoming a blob.
     """
-    # Replace row and cell boundaries with newlines
     text = re.sub(r'</tr>', '\n', text, flags=re.IGNORECASE)
     text = re.sub(r'</th>', '\t', text, flags=re.IGNORECASE)
     text = re.sub(r'</td>', '\t', text, flags=re.IGNORECASE)
-    # Remove all remaining HTML tags
     text = re.sub(r'<[^>]+>', '', text)
-    # Collapse tabs to single space (column separator)
     text = re.sub(r'\t+', '  ', text)
-    # Collapse multiple spaces (but keep newlines)
     text = re.sub(r'[^\S\n]+', ' ', text)
-    # Remove blank lines
     text = re.sub(r'\n\s*\n', '\n', text)
     return text.strip()
 
 
 def translate_text(text: str, src_lang: str, tgt_lang: str) -> str:
-    """Translate a string, preserving line breaks. Returns original text on failure."""
+    """Translate a string via M2M-100. Returns original text on failure."""
     if not text.strip():
         return text
     if src_lang == tgt_lang:
         return text
 
-    # Normalise common variants
     src = src_lang.lower().split("-")[0].split("_")[0]
     tgt = tgt_lang.lower().split("-")[0].split("_")[0]
 
-    # Argos doesn't have an "unknown" pack — fall back to trying common langs
     if src == "unknown":
         return text
 
+    from pipeline.translate_m2m import supports_pair, translate, translate_lines
+
+    if not supports_pair(src, tgt):
+        return _strip_html(_strip_markdown(text))
+
     try:
-        _ensure_lang_pack(src, tgt)
-        installed = argostranslate.translate.get_installed_languages()
-        src_obj = next((l for l in installed if l.code == src), None)
-        tgt_obj = next((l for l in installed if l.code == tgt), None)
-        if src_obj is None or tgt_obj is None:
-            return _strip_html(_strip_markdown(text))
-        translation = src_obj.get_translation(tgt_obj)
-        if translation is None:
-            return _strip_html(_strip_markdown(text))
-
-        # ── HTML table: translate cell contents in-place, keep structure ───
+        # HTML table: translate cell contents, keep structure
         if re.search(r'<tr[^>]*>', text, re.IGNORECASE):
-            return _translate_html_table(text, translation)
+            return _translate_html_table(text, src, tgt)
 
-        # ── Normal text: strip markdown/HTML ────────────────────────────
         clean = _strip_html(_strip_markdown(text))
 
-        # ── Form-like block: alternating label/value lines ────────────
-        #    Translate each line individually to preserve structure
+        # Form-like: translate each line individually
         if _looks_like_form(clean):
-            return _translate_form_lines(clean, translation)
+            return _translate_form_lines(clean, src, tgt)
 
-        # ── Regular text: group short lines for better context ────────
-        return _translate_lines(clean, translation)
+        # Regular text: group short lines for context
+        return translate_lines(clean, src, tgt)
 
     except Exception as e:
         print(f"[Translate] Warning: {e}")
         return _strip_html(_strip_markdown(text))
 
 
-def _translate_html_table(html: str, translation) -> str:
-    """Translate cell contents inside HTML table, preserving table structure."""
-    def _translate_cell(match):
-        tag = match.group(1)       # td or th
-        attrs = match.group(2)     # any attributes
-        content = match.group(3)   # cell text
-        close = match.group(4)     # closing tag
+def _translate_html_table(html: str, src: str, tgt: str) -> str:
+    """Translate HTML table cell contents via M2M-100."""
+    from pipeline.translate_m2m import translate
 
-        # Clean up content
+    def _translate_cell(match):
+        tag = match.group(1)
+        attrs = match.group(2)
+        content = match.group(3)
+        close = match.group(4)
         inner = re.sub(r'<[^>]+>', '', content).strip()
         if not inner or _is_numeric_line(inner):
             translated = inner
         else:
-            translated = translation.translate(inner)
+            translated = translate(inner, src, tgt)
         return f"<{tag}{attrs}>{translated}</{close}>"
 
-    result = re.sub(
+    return re.sub(
         r'<(td|th)([^>]*)>(.*?)</(td|th)>',
-        _translate_cell,
-        html,
+        _translate_cell, html,
         flags=re.DOTALL | re.IGNORECASE,
     )
-    return result
 
 
-def _translate_lines(clean: str, translation) -> str:
-    """Translate text line-by-line with short-line grouping for context."""
+def _translate_form_lines(clean: str, src: str, tgt: str) -> str:
+    """Translate form-like text line-by-line via M2M-100."""
+    from pipeline.translate_m2m import translate
+
     lines = clean.split("\n")
-    result_lines: list = []
-    group: list = []
-
-    def _flush_group():
-        if not group:
-            return
-        joined = " ".join(group)
-        translated = translation.translate(joined)
-        # Try to re-split the translation to match the original count.
-        parts = translated.split(". ")
-        if len(parts) == len(group):
-            for k, p in enumerate(parts):
-                suffix = "." if k < len(parts) - 1 and not p.endswith(".") else ""
-                result_lines.append(p + suffix)
-        else:
-            result_lines.append(translated)
-
+    result = []
     for line in lines:
         stripped = line.strip()
         if not stripped:
-            _flush_group()
-            group = []
-            result_lines.append("")
-        elif _is_numeric_line(stripped) or len(stripped) > 60:
-            _flush_group()
-            group = []
-            if _is_numeric_line(stripped):
-                result_lines.append(stripped)
-            else:
-                result_lines.append(translation.translate(stripped))
+            result.append("")
+        elif _is_numeric_line(stripped):
+            result.append(stripped)
         else:
-            group.append(stripped)
-            if len(group) >= 3:
-                _flush_group()
-                group = []
-
-    _flush_group()
-    return "\n".join(result_lines)
+            result.append(translate(stripped, src, tgt))
+    return "\n".join(result)
 
 
 def _looks_like_form(text: str) -> bool:
-    """Detect alternating label/value structure (>=4 lines with short/data pattern).
-
-    Form blocks alternate between short label lines and data-value lines
-    (dates, numbers, addresses, names).  If we see at least 3 such pairs,
-    treat the whole block as a form so we translate line-by-line.
-    """
+    """Detect alternating label/value structure (>=4 lines with short/data pattern)."""
     lines = [l.strip() for l in text.split("\n") if l.strip()]
     if len(lines) < 4:
         return False
@@ -215,8 +135,6 @@ def _looks_like_form(text: str) -> bool:
     while i < len(lines) - 1:
         label = lines[i]
         value = lines[i + 1]
-        # Label: short-ish text line (not a number/date)
-        # Value: a data-like line (number, date, name, address, etc.)
         if (len(label) < 50 and not _is_numeric_line(label)
                 and (_is_numeric_line(value) or _is_data_value(value))):
             pairs += 1
@@ -227,42 +145,19 @@ def _looks_like_form(text: str) -> bool:
 
 
 def _is_data_value(text: str) -> bool:
-    """Heuristic: looks like a data value rather than a label.
-
-    Matches dates, amounts, addresses (with numbers), proper nouns,
-    and very short values (single word / code).
-    """
+    """Heuristic: looks like a data value rather than a label."""
     stripped = text.strip()
-    # Dates: 10/04/2008, 27/06/2024
     if re.match(r'^\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{2,4}', stripped):
         return True
-    # Contains digits mixed with text (addresses, codes)
     digits = sum(1 for c in stripped if c.isdigit())
     if digits >= 2 and digits / max(len(stripped), 1) > 0.15:
         return True
-    # Starts with uppercase word (proper noun / name)
     words = stripped.split()
     if words and words[0][0:1].isupper() and len(words) <= 8:
         return True
-    # Very short (single code or value)
     if len(stripped) <= 20:
         return True
     return False
-
-
-def _translate_form_lines(clean: str, translation) -> str:
-    """Translate each line individually to preserve form label/value structure."""
-    lines = clean.split("\n")
-    result = []
-    for line in lines:
-        stripped = line.strip()
-        if not stripped:
-            result.append("")
-        elif _is_numeric_line(stripped):
-            result.append(stripped)
-        else:
-            result.append(translation.translate(stripped))
-    return "\n".join(result)
 
 
 def _is_numeric_line(text: str) -> bool:
@@ -279,8 +174,6 @@ def translate_blocks(
     Translate all OCR blocks in-place (adds 'translated' key).
     Returns the same list with translations added.
     """
-    # Infer majority language from blocks with a detected language,
-    # then apply it to any "unknown" blocks (e.g. text without accented chars).
     lang_counts: Dict[str, int] = {}
     for block in blocks:
         lang = block.get("lang", "unknown")

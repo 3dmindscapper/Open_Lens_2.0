@@ -8,15 +8,17 @@ Runs entirely on your machine — no internet required after setup, no external 
 ## How it works
 
 1. **OCR** — [dots.mocr](https://huggingface.co/rednote-hilab/dots.mocr) (Qwen2.5-VL based, 3B params) extracts text blocks with bounding boxes and layout categories (Title, Text, Table, Section-header, etc.). This is the successor to dots.ocr with improved multilingual accuracy and structured-graphics parsing.
-2. **Translate** — [Argos Translate](https://github.com/argosopentech/argos-translate) translates each block line-by-line, preserving document structure. Fully offline after the first language-pack download.
+2. **Translate** — **M2M-100** (100 languages, any-to-any, MIT license). Two model sizes: 418M (faster) and 1.2B (higher quality). Fully offline after first model download.
 3. **Inpaint** — The original text regions are erased by sampling the surrounding background colour and filling the bounding box.
 4. **Render** — Translated text is drawn back onto the document at the correct position, recovering the original font size via binary search and rendering form-style label/value pairs side-by-side with tab-stop alignment.
-5. **Export** — Output is served as a downloadable translated PDF (or image).
+5. **Export** — Output as downloadable translated PDF, plus optional **JSON** and **Markdown** exports for downstream LLM processing.
 
 ---
 
 ## Features
 
+- **M2M-100 translation** — 100 languages, any-to-any. Two model sizes (418M / 1.2B) switchable from the UI.
+- **JSON & Markdown export** — Toggle raw OCR output as downloadable `.json` (with bboxes, categories, text) or `.md` (structured headings, tables, lists) for downstream LLM pipelines.
 - **Side-by-side comparison** — Gradio UI shows original and translated documents next to each other.
 - **Font size recovery** — Binary-searches the font size that makes the *original* text fit its bounding box, then uses that same size for the translation.
 - **Form / table layout** — Detects alternating label–value line patterns and renders them side-by-side with tab-stop alignment instead of stacking vertically.
@@ -41,11 +43,13 @@ Open_Lens_2.0/
 ├── pipeline/
 │   ├── init.py
 │   ├── ocr.py         ← dots.mocr inference + layout parsing
-│   ├── translate.py   ← Argos Translate (local, line-by-line)
+│   ├── translate.py   ← Translation router (M2M-100)
+│   ├── translate_m2m.py ← M2M-100 translation backend (100 languages)
+│   ├── export.py      ← JSON + Markdown export from OCR blocks
 │   ├── inpaint.py     ← Erase original text from image
 │   ├── renderer.py    ← Overlay translated text (font recovery, form layout)
 │   └── pdf_utils.py   ← PDF ↔ image conversion (PyMuPDF @ 150 DPI)
-└── models/            ← Auto-created, stores downloaded model weights (~5.8 GB)
+└── models/            ← Auto-created, stores downloaded model weights
 ```
 
 ---
@@ -96,28 +100,11 @@ Double-click **`run.bat`** — the Gradio UI opens in your browser automatically
 
 **Source** (auto-detected): French, Catalan, Spanish, Italian, German, Portuguese, Chinese, Japanese, Korean, Arabic, Russian — plus any other language dots.mocr can read (falls back to majority-language detection).
 
-**Target** (selectable in UI):
+**Target** (selectable in UI): **100 languages** with M2M-100, including all of the above plus:
 
-| Language             | Code |
-|----------------------|------|
-| English              | en   |
-| Spanish              | es   |
-| French               | fr   |
-| German               | de   |
-| Portuguese           | pt   |
-| Italian              | it   |
-| Dutch                | nl   |
-| Russian              | ru   |
-| Arabic               | ar   |
-| Japanese             | ja   |
-| Korean               | ko   |
-| Chinese (Simplified) | zh   |
-| Turkish              | tr   |
-| Polish               | pl   |
-| Swedish              | sv   |
+Afrikaans, Amharic, Asturian, Azerbaijani, Bashkir, Belarusian, Bengali, Breton, Bosnian, Bulgarian, Cebuano, Czech, Croatian, Danish, Estonian, Finnish, Fulah, Georgian, Greek, Gujarati, Haitian Creole, Hausa, Hebrew, Hindi, Hungarian, Armenian, Icelandic, Igbo, Iloko, Indonesian, Irish, Javanese, Kazakh, Khmer, Kannada, Lao, Latvian, Lithuanian, Luxembourgish, Macedonian, Malagasy, Malay, Malayalam, Marathi, Mongolian, Burmese, Nepali, Occitan, Oriya, Pashto, Persian, Punjabi, Romanian, Scottish Gaelic, Serbian, Sindhi, Sinhala, Slovak, Slovenian, Somali, Albanian, Sundanese, Swahili, Swati, Tagalog, Tamil, Thai, Tswana, Ukrainian, Urdu, Uzbek, Vietnamese, Welsh, Western Frisian, Wolof, Xhosa, Yiddish, Yoruba, Zulu.
 
-Argos Translate language packs are downloaded automatically on first use (~100 MB per pair).  
-Full list: https://www.argosopentech.com/argospm/index/
+Both model sizes support the same 100 language codes.
 
 ---
 
@@ -155,7 +142,7 @@ dots.mocr ships custom model code (`trust_remote_code=True`) that may conflict w
 
 - **Latin-language disambiguation** — Catalan, French, Italian, and Spanish share many accented characters. The heuristic detector uses stop-word boosting but can still misidentify short texts. Longer documents are more reliable.
 - **Table rendering** — Complex multi-column tables with merged cells may not render perfectly; the form-layout renderer handles simple label–value pairs well.
-- **Translation quality** — Depends on Argos Translate's model quality for each language pair. Some pairs (e.g. Catalan→English) may be less polished than others (e.g. French→English).
+- **Translation quality** — M2M-100 1.2B provides the best quality. The 418M model is faster but may produce lower-quality translations for complex sentences.
 - **Handwritten text** — dots.mocr is optimised for printed/typed text. Handwritten documents may produce poor OCR results.
 
 ---
@@ -166,11 +153,7 @@ dots.mocr ships custom model code (`trust_remote_code=True`) that may conflict w
 
 **"Model download failed"** — Check your internet connection. The model only needs to download once.
 
-**"Translation failed"** — The Argos language pack for that pair may not be installed. Check the console for the detected language code and install manually:
-```
-argospm install translate-XX_en
-```
-Replace `XX` with the source language code (e.g. `ca`, `fr`, `de`).
+**"Translation failed"** — Check the console for the detected language code. M2M-100 supports 100 languages — if the source language is not in the supported set, the text will be returned as-is.
 
 **Blank/white overlay** — The inpainting step couldn't sample a background colour. Try a higher-resolution scan.
 
@@ -194,8 +177,11 @@ Planned stack: **FastAPI** with background task queue, optional Redis/Celery for
 
 ### Additional planned features
 - **Batch processing** — upload a folder of documents and translate them all in one run.
-- **Translation memory / glossary** — user-defined term mappings (e.g. company names, legal terms) that override Argos output.
-- NEXT UP---> **Upgrading to dots.mocr** for improved results
+- **Translation memory / glossary** — user-defined term mappings (e.g. company names, legal terms) that override translation output.
+- ~~Upgrading to dots.mocr for improved results~~ ✅ Done
+- ~~M2M-100 translation backend (100 languages)~~ ✅ Done
+- ~~Remove Argos dependency, dual M2M-100 model sizes~~ ✅ Done
+- ~~JSON/Markdown export for LLM pipelines~~ ✅ Done
 
 ---
 

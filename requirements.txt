@@ -17,8 +17,8 @@ torch>=2.3.0
 qwen-vl-utils>=0.0.8
 accelerate>=0.30.0
 
-# Translation (fully local)
-argostranslate>=1.9.6
+# Translation — M2M-100 (MIT, 100 languages, any-to-any)
+sentencepiece>=0.2.0
 
 # ── Optional: Flash Attention 2 (Linux + CUDA only, ~30% faster OCR) ────
 # Install on Linux servers via: pip install flash-attn --no-build-isolation

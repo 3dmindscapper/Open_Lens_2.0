@@ -18,27 +18,112 @@ from PIL import Image
 
 from pipeline.pdf_utils import load_document, images_to_pdf
 from pipeline.ocr import run_ocr
-from pipeline.translate import translate_blocks
+from pipeline.translate import translate_blocks, set_model, get_model
 from pipeline.inpaint import erase_text_blocks
 from pipeline.renderer import render_translations
+from pipeline.export import export_all_pages_json, export_all_pages_markdown
 
-# ── Supported target languages (Argos Translate codes) ───────────────────────
+# ── Supported target languages (M2M-100: 100 languages, any-to-any) ──────────
 TARGET_LANGUAGES = {
-    "English":    "en",
-    "Spanish":    "es",
-    "French":     "fr",
-    "German":     "de",
-    "Portuguese": "pt",
-    "Italian":    "it",
-    "Dutch":      "nl",
-    "Russian":    "ru",
-    "Arabic":     "ar",
-    "Japanese":   "ja",
-    "Korean":     "ko",
-    "Chinese (Simplified)": "zh",
-    "Turkish":    "tr",
-    "Polish":     "pl",
-    "Swedish":    "sv",
+    "English":               "en",
+    "Spanish":               "es",
+    "French":                "fr",
+    "German":                "de",
+    "Portuguese":            "pt",
+    "Italian":               "it",
+    "Dutch":                 "nl",
+    "Russian":               "ru",
+    "Arabic":                "ar",
+    "Japanese":              "ja",
+    "Korean":                "ko",
+    "Chinese":               "zh",
+    "Turkish":               "tr",
+    "Polish":                "pl",
+    "Swedish":               "sv",
+    "Afrikaans":             "af",
+    "Amharic":               "am",
+    "Asturian":              "ast",
+    "Azerbaijani":           "az",
+    "Bashkir":               "ba",
+    "Belarusian":            "be",
+    "Bulgarian":             "bg",
+    "Bengali":               "bn",
+    "Breton":                "br",
+    "Bosnian":               "bs",
+    "Catalan":               "ca",
+    "Cebuano":               "ceb",
+    "Czech":                 "cs",
+    "Welsh":                 "cy",
+    "Danish":                "da",
+    "Greek":                 "el",
+    "Estonian":              "et",
+    "Persian":               "fa",
+    "Fulah":                 "ff",
+    "Finnish":               "fi",
+    "Western Frisian":       "fy",
+    "Irish":                 "ga",
+    "Scottish Gaelic":       "gd",
+    "Galician":              "gl",
+    "Gujarati":              "gu",
+    "Hausa":                 "ha",
+    "Hebrew":                "he",
+    "Hindi":                 "hi",
+    "Croatian":              "hr",
+    "Haitian Creole":        "ht",
+    "Hungarian":             "hu",
+    "Armenian":              "hy",
+    "Indonesian":            "id",
+    "Igbo":                  "ig",
+    "Iloko":                 "ilo",
+    "Icelandic":             "is",
+    "Javanese":              "jv",
+    "Georgian":              "ka",
+    "Kazakh":                "kk",
+    "Central Khmer":         "km",
+    "Kannada":               "kn",
+    "Luxembourgish":         "lb",
+    "Ganda":                 "lg",
+    "Lingala":               "ln",
+    "Lao":                   "lo",
+    "Lithuanian":            "lt",
+    "Latvian":               "lv",
+    "Malagasy":              "mg",
+    "Macedonian":            "mk",
+    "Malayalam":             "ml",
+    "Mongolian":             "mn",
+    "Marathi":               "mr",
+    "Malay":                 "ms",
+    "Burmese":               "my",
+    "Nepali":                "ne",
+    "Northern Sotho":        "ns",
+    "Occitan":               "oc",
+    "Oriya":                 "or",
+    "Punjabi":               "pa",
+    "Pashto":                "ps",
+    "Romanian":              "ro",
+    "Sindhi":                "sd",
+    "Sinhala":               "si",
+    "Slovak":                "sk",
+    "Slovenian":             "sl",
+    "Somali":                "so",
+    "Albanian":              "sq",
+    "Serbian":               "sr",
+    "Swati":                 "ss",
+    "Sundanese":             "su",
+    "Swahili":               "sw",
+    "Tamil":                 "ta",
+    "Thai":                  "th",
+    "Tagalog":               "tl",
+    "Tswana":                "tn",
+    "Ukrainian":             "uk",
+    "Urdu":                  "ur",
+    "Uzbek":                 "uz",
+    "Vietnamese":            "vi",
+    "Wolof":                 "wo",
+    "Xhosa":                 "xh",
+    "Yiddish":               "yi",
+    "Yoruba":                "yo",
+    "Zulu":                  "zu",
 }
 
 OUTPUT_DIR = Path(tempfile.gettempdir()) / "openlens2_output"
@@ -312,18 +397,30 @@ def _build_preview_html(
 def process_document(
     file_obj,
     target_lang_name: str,
+    model_name: str,
+    export_json: bool,
+    export_md: bool,
     progress=gr.Progress(track_tqdm=True),
-) -> Tuple[Optional[str], Optional[str], str]:
+):
     """
     Main pipeline function called by Gradio.
 
     Returns:
         - preview_html: HTML string with side-by-side selectable-text preview
         - output_file: path to the downloadable translated PDF
+        - json_file: path to JSON export (or None)
+        - md_file: path to Markdown export (or None)
         - status: status message string
     """
     if file_obj is None:
-        return None, None, "⚠️ Please upload a file first."
+        return None, None, None, None, "⚠️ Please upload a file first."
+
+    # Set translation model size
+    _model_map = {
+        "M2M-100 418M (Faster)": "m2m100_418m",
+        "M2M-100 1.2B (Better Quality)": "m2m100_1.2b",
+    }
+    set_model(_model_map.get(model_name, "m2m100_418m"))
 
     tgt_code = TARGET_LANGUAGES.get(target_lang_name, "en")
     file_path = file_obj.name if hasattr(file_obj, "name") else str(file_obj)
@@ -333,7 +430,10 @@ def process_document(
         progress(0.05, desc="Loading document...")
         pages = load_document(file_path)
         n = len(pages)
-        status_lines = [f"📄 Loaded {n} page(s)."]
+        status_lines = [
+            f"📄 Loaded {n} page(s).",
+            f"🔤 Translation model: M2M-100 {get_model().upper()}",
+        ]
 
         translated_pages = []
         original_pages = []
@@ -371,11 +471,30 @@ def process_document(
             original_pages.append(page_img)
             all_blocks.append(blocks)
 
-        # ── Step 6: Export ────────────────────────────────────────────────────
-        progress(0.92, desc="Saving output PDF...")
-        out_name = Path(file_path).stem + f"_translated_{tgt_code}.pdf"
+        # ── Step 6: Export PDF ────────────────────────────────────────────────
+        progress(0.90, desc="Saving output PDF...")
+        stem = Path(file_path).stem
+        out_name = stem + f"_translated_{tgt_code}.pdf"
         out_path = str(OUTPUT_DIR / out_name)
         images_to_pdf(translated_pages, out_path)
+
+        # ── Step 7: Optional JSON/Markdown exports ────────────────────────────
+        json_path = None
+        md_path = None
+
+        if export_json:
+            json_name = stem + "_ocr_output.json"
+            json_path = str(OUTPUT_DIR / json_name)
+            with open(json_path, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_json(all_blocks))
+            status_lines.append(f"📋 JSON export saved.")
+
+        if export_md:
+            md_name = stem + "_ocr_output.md"
+            md_path = str(OUTPUT_DIR / md_name)
+            with open(md_path, "w", encoding="utf-8") as f:
+                f.write(export_all_pages_markdown(all_blocks))
+            status_lines.append(f"📝 Markdown export saved.")
 
         progress(0.96, desc="Building preview...")
         preview = _build_preview_html(original_pages, translated_pages, all_blocks)
@@ -383,12 +502,12 @@ def process_document(
         progress(1.0, desc="Done.")
         status_lines.append(f"\n✅ Done! Output saved to: {out_path}")
 
-        return preview, out_path, "\n".join(status_lines)
+        return preview, out_path, json_path, md_path, "\n".join(status_lines)
 
     except Exception:
         err = traceback.format_exc()
         print(err)
-        return None, None, f"❌ Error:\n{err}"
+        return None, None, None, None, f"❌ Error:\n{err}"
 
 
 # ── Gradio UI ─────────────────────────────────────────────────────────────────
@@ -416,6 +535,23 @@ with gr.Blocks(
                 value="English",
                 label="Translate to",
             )
+            backend_dropdown = gr.Dropdown(
+                choices=["M2M-100 418M (Faster)", "M2M-100 1.2B (Better Quality)"],
+                value="M2M-100 418M (Faster)",
+                label="Translation model",
+                info="418M: faster, less VRAM. 1.2B: higher quality, needs ~5 GB VRAM.",
+            )
+
+            with gr.Row():
+                export_json_cb = gr.Checkbox(
+                    label="Export JSON", value=False,
+                    info="Raw OCR blocks with bboxes — for LLM pipelines",
+                )
+                export_md_cb = gr.Checkbox(
+                    label="Export Markdown", value=False,
+                    info="Structured document text — headings, tables, lists",
+                )
+
             submit_btn = gr.Button("🚀 Translate", variant="primary")
 
         with gr.Column(scale=2):
@@ -429,6 +565,15 @@ with gr.Blocks(
                 label="📥 Download translated PDF",
                 interactive=False,
             )
+            with gr.Row():
+                download_json = gr.File(
+                    label="📋 JSON export",
+                    interactive=False,
+                )
+                download_md = gr.File(
+                    label="📝 Markdown export",
+                    interactive=False,
+                )
 
     gr.Markdown(
         "### Preview (original ← | → translated)  \n"
@@ -439,18 +584,25 @@ with gr.Blocks(
 
     submit_btn.click(
         fn=process_document,
-        inputs=[file_input, lang_dropdown],
-        outputs=[preview_html, download_btn, status_box],
+        inputs=[file_input, lang_dropdown, backend_dropdown,
+                export_json_cb, export_md_cb],
+        outputs=[preview_html, download_btn, download_json,
+                 download_md, status_box],
     )
 
     gr.Markdown(
         """
         ---
         **Tips:**
-        - First run will download Argos language packs (~100 MB per language pair).
+        - **M2M-100 418M** (~1.7 GB): faster, runs well on CPU or limited VRAM.
+        - **M2M-100 1.2B** (~4.9 GB): higher quality translations, needs ~5 GB VRAM.
+        - Both models support 100 languages with any-to-any translation.
+        - Models are downloaded automatically on first use (one-time).
         - CPU-only machines may take 20–60 seconds per page.
         - For best results, use clear high-resolution scans (150 DPI+).
         - Hover over translated text to highlight it; select to copy.
+        - **JSON/Markdown exports** contain the raw OCR output
+          with bounding boxes — useful for downstream LLM processing.
         """
     )
 
