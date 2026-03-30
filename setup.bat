@@ -77,9 +77,9 @@ echo   Note: Flash Attention 2 is not available on Windows.
 echo   Using PyTorch SDPA backend instead ^(still fast on CUDA^).
 echo   For maximum speed, deploy on Linux — see setup_server.sh
 
-REM ── Download dots.ocr model ───────────────────────────────────
+REM ── Download dots.mocr model ───────────────────────────────────────
 echo.
-echo [5/5] Downloading dots.ocr model weights (~2-4 GB)...
+echo [5/5] Downloading dots.mocr model weights (~2-4 GB)...
 echo       This only happens once. Please wait...
 python download_model.py
 if errorlevel 1 (

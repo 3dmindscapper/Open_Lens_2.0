@@ -67,7 +67,7 @@ def _strip_markdown(text: str) -> str:
 def _strip_html(text: str) -> str:
     """Convert HTML table structure to plain text with line breaks.
 
-    dots.ocr outputs Table blocks as HTML.  We convert row/cell boundaries
+    dots.mocr outputs Table blocks as HTML.  We convert row/cell boundaries
     to newlines so the text preserves structure instead of becoming a blob.
     """
     # Replace row and cell boundaries with newlines

@@ -10,8 +10,8 @@ Pillow>=10.4.0
 opencv-python>=4.10.0
 numpy>=1.26.0
 
-# OCR — dots.ocr uses transformers + torch
-# IMPORTANT: dots.ocr requires transformers 4.x — version 5.x breaks the model
+# OCR — dots.mocr uses transformers + torch
+# IMPORTANT: dots.mocr requires transformers 4.x — version 5.x breaks the model
 transformers>=4.44.0,<5.0.0
 torch>=2.3.0
 qwen-vl-utils>=0.0.8

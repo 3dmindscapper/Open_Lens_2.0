@@ -7,7 +7,7 @@ Runs entirely on your machine — no internet required after setup, no external 
 
 ## How it works
 
-1. **OCR** — [dots.ocr](https://huggingface.co/rednote-hilab/dots.ocr) (Qwen2.5-VL based) extracts text blocks with bounding boxes and layout categories (Title, Text, Table, Section-header, etc.).
+1. **OCR** — [dots.mocr](https://huggingface.co/rednote-hilab/dots.mocr) (Qwen2.5-VL based, 3B params) extracts text blocks with bounding boxes and layout categories (Title, Text, Table, Section-header, etc.). This is the successor to dots.ocr with improved multilingual accuracy and structured-graphics parsing.
 2. **Translate** — [Argos Translate](https://github.com/argosopentech/argos-translate) translates each block line-by-line, preserving document structure. Fully offline after the first language-pack download.
 3. **Inpaint** — The original text regions are erased by sampling the surrounding background colour and filling the bounding box.
 4. **Render** — Translated text is drawn back onto the document at the correct position, recovering the original font size via binary search and rendering form-style label/value pairs side-by-side with tab-stop alignment.
@@ -36,11 +36,11 @@ Open_Lens_2.0/
 ├── run.bat            ← Run daily to launch the app
 ├── requirements.txt
 ├── app.py             ← Gradio web UI + pipeline orchestration
-├── download_model.py  ← Downloads dots.ocr weights into models/
+├── download_model.py  ← Downloads dots.mocr weights into models/
 ├── test_renderer.py   ← Visual test for renderer with mock OCR blocks
 ├── pipeline/
 │   ├── init.py
-│   ├── ocr.py         ← dots.ocr inference + layout parsing
+│   ├── ocr.py         ← dots.mocr inference + layout parsing
 │   ├── translate.py   ← Argos Translate (local, line-by-line)
 │   ├── inpaint.py     ← Erase original text from image
 │   ├── renderer.py    ← Overlay translated text (font recovery, form layout)
@@ -57,10 +57,11 @@ Open_Lens_2.0/
 2. Install **Git** from https://git-scm.com/download/win
 3. Copy this entire folder to your PC.
 4. Double-click **`setup.bat`**  
-   — Creates a virtual environment, installs dependencies, downloads the dots.ocr model.  
+   — Creates a virtual environment, installs dependencies, downloads the dots.mocr model.  
    — Takes 5–15 minutes on first run depending on your connection.
 5. Double-click **`run.bat`** to start the app.
 6. Open your browser at **http://localhost:7860**
+
 ## One-time setup (Linux server — with Flash Attention)
 
 For production / mass-usage deployment on Linux with NVIDIA GPUs:
@@ -72,6 +73,7 @@ chmod +x setup_server.sh
 
 This installs everything including **Flash Attention 2** for ~30% faster OCR inference.  
 Requires: CUDA toolkit, gcc/g++, ninja-build.
+
 ---
 
 ## Daily use
@@ -92,7 +94,7 @@ Double-click **`run.bat`** — the Gradio UI opens in your browser automatically
 
 ## Supported languages
 
-**Source** (auto-detected): French, Catalan, Spanish, Italian, German, Portuguese, Chinese, Japanese, Korean, Arabic, Russian — plus any other language dots.ocr can read (falls back to majority-language detection).
+**Source** (auto-detected): French, Catalan, Spanish, Italian, German, Portuguese, Chinese, Japanese, Korean, Arabic, Russian — plus any other language dots.mocr can read (falls back to majority-language detection).
 
 **Target** (selectable in UI):
 
@@ -127,7 +129,7 @@ Full list: https://www.argosopentech.com/argospm/index/
 | NVIDIA GPU + SDPA (Windows)     | ~50–80 s per page |
 | CPU only (no GPU)     | ~2–5 min per page       |
 
-dots.ocr auto-detects your GPU. On CUDA, the model runs in **bfloat16** with **SDPA** attention (or **Flash Attention 2** if installed on Linux).  
+dots.mocr auto-detects your GPU. On CUDA, the model runs in **bfloat16** with **SDPA** attention (or **Flash Attention 2** if installed on Linux).  
 Speed depends heavily on two tunable constants in `pipeline/ocr.py`:
 
 | Knob | What it does | Trade-off |
@@ -139,12 +141,22 @@ See the commented boxes in `pipeline/ocr.py` for detailed guidance.
 
 ---
 
+## dots.mocr compatibility notes
+
+dots.mocr ships custom model code (`trust_remote_code=True`) that may conflict with certain `transformers` versions. The OCR pipeline handles these automatically:
+
+- **flash_attn not installed** — The upstream vision encoder hard-imports `flash_attn`. On Windows (or any system without it), a lightweight stub module is injected so the import succeeds. The model uses PyTorch SDPA instead — no functionality is lost.
+- **Processor init TypeError** — The custom `DotsVLProcessor` may conflict with `Qwen2_5_VLProcessor.__init__` in some transformers versions. The pipeline falls back to building the processor manually with the correct chat template and token IDs.
+- **Requires transformers 4.x** — Version 5.x breaks the model. Pinned in `requirements.txt`.
+
+---
+
 ## Known limitations
 
 - **Latin-language disambiguation** — Catalan, French, Italian, and Spanish share many accented characters. The heuristic detector uses stop-word boosting but can still misidentify short texts. Longer documents are more reliable.
 - **Table rendering** — Complex multi-column tables with merged cells may not render perfectly; the form-layout renderer handles simple label–value pairs well.
 - **Translation quality** — Depends on Argos Translate's model quality for each language pair. Some pairs (e.g. Catalan→English) may be less polished than others (e.g. French→English).
-- **Handwritten text** — dots.ocr is optimised for printed/typed text. Handwritten documents may produce poor OCR results.
+- **Handwritten text** — dots.mocr is optimised for printed/typed text. Handwritten documents may produce poor OCR results.
 
 ---
 

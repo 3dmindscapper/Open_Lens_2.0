@@ -1,12 +1,12 @@
 """
-download_model.py — Downloads the dots.ocr model weights from Hugging Face.
+download_model.py — Downloads the dots.mocr model weights from Hugging Face.
 Called by setup.bat during first-time setup.
 """
 import os
 import sys
 
-model_id = "rednote-hilab/dots.ocr"
-cache_dir = os.path.join("models", "dots_ocr")
+model_id = "rednote-hilab/dots.mocr"
+cache_dir = os.path.join("models", "dots_mocr")
 os.makedirs(cache_dir, exist_ok=True)
 
 print("  Downloading tokenizer...")

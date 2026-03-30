@@ -1,7 +1,7 @@
 """
 test_renderer.py — Test the renderer with mock OCR blocks against the test document.
 
-Simulates what dots.ocr would return for the French certificate document,
+Simulates what dots.mocr would return for the French certificate document,
 runs inpaint + render, and saves the result for visual inspection.
 No model loading required.
 """
@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from pipeline.inpaint import erase_text_blocks
 from pipeline.renderer import render_translations
 
-# ── Mock OCR blocks (simulating dots.ocr output for the French certificate) ──
+# ── Mock OCR blocks (simulating dots.mocr output for the French certificate) ──
 # These approximate the bounding boxes and text from the test document.
 # Coordinates are in pixels at 150 DPI (the image is ~1240x1754 px).
 

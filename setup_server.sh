@@ -82,12 +82,12 @@ echo "       Done."
 
 # ── Download model ──────────────────────────────────────────────────────────
 echo ""
-echo "[6/6] Downloading dots.ocr model weights..."
+echo "[6/6] Downloading dots.mocr model weights..."
 python3 -c "
 from transformers import AutoTokenizer, AutoModel
 import os
-model_id = 'rednote-hilab/dots.ocr'
-cache_dir = os.path.join('models', 'dots_ocr')
+model_id = 'rednote-hilab/dots.mocr'
+cache_dir = os.path.join('models', 'dots_mocr')
 print('  Downloading tokenizer...')
 AutoTokenizer.from_pretrained(model_id, cache_dir=cache_dir, trust_remote_code=True)
 print('  Downloading model weights...')

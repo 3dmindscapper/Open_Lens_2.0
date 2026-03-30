@@ -1,5 +1,5 @@
 """
-ocr.py — Run dots.ocr on a PIL Image and return structured text blocks with bounding boxes.
+ocr.py — Run dots.mocr on a PIL Image and return structured text blocks with bounding boxes.
 
 Each block is a dict:
     {
@@ -18,10 +18,14 @@ from typing import List, Dict, Any
 
 import torch
 from PIL import Image
-from transformers import AutoProcessor, AutoModelForCausalLM, AutoConfig
+from transformers import AutoProcessor, AutoModelForCausalLM, AutoConfig, AutoTokenizer
 
-MODEL_ID = "rednote-hilab/dots.ocr"
-CACHE_DIR = os.path.join("models", "dots_ocr")
+# ── Model configuration ──────────────────────────────────────────────────────
+# dots.mocr is the successor to dots.ocr — same Qwen2.5-VL architecture but
+# with improved multilingual OCR accuracy and structured-graphics parsing.
+# HuggingFace: https://huggingface.co/rednote-hilab/dots.mocr
+MODEL_ID = "rednote-hilab/dots.mocr"
+CACHE_DIR = os.path.join("models", "dots_mocr")
 
 # ┌─────────────────────────────────────────────────────────────────────────────┐
 # │  ⚡ SPEED KNOB 1 — OCR_MAX_PIXELS                                          │
@@ -38,8 +42,11 @@ CACHE_DIR = os.path.join("models", "dots_ocr")
 OCR_MAX_PIXELS = 5_000_000
 
 # ── Attention backend detection ───────────────────────────────────────────────
-# flash-attn is fastest but only works on Linux + CUDA.
-# SDPA (PyTorch native) is the universal fallback and still fast.
+# dots.mocr supports three attention backends for its vision encoder:
+#   - flash_attention_2: Fastest, requires flash-attn package (Linux + CUDA only)
+#   - sdpa: PyTorch's built-in scaled dot-product attention (universal fallback)
+#   - eager: Vanilla attention (slowest, always works)
+# We auto-detect flash-attn availability and fall back to SDPA on Windows.
 _flash_attn_available = False
 try:
     import flash_attn  # noqa: F401
@@ -58,7 +65,7 @@ _ATTN_BACKEND = "flash_attention_2" if _flash_attn_available else "sdpa"
 _model = None
 _processor = None
 
-# dots.ocr prompt for full layout extraction with bboxes + text (from official prompts)
+# dots.mocr prompt for full layout extraction with bboxes + text (from official prompts)
 LAYOUT_PROMPT = (
     "Please output the layout information from the PDF image, including each layout "
     "element's bbox, its category, and the corresponding text content within the bbox.\n\n"
@@ -78,19 +85,45 @@ LAYOUT_PROMPT = (
 
 
 def _get_local_model_path():
-    """Resolve the local HF cache snapshot directory for the dots.ocr model."""
+    """Resolve the local HF cache snapshot directory for the dots.mocr model."""
     refs_file = os.path.join(
-        CACHE_DIR, "models--rednote-hilab--dots.ocr", "refs", "main"
+        CACHE_DIR, "models--rednote-hilab--dots.mocr", "refs", "main"
     )
     if os.path.isfile(refs_file):
         with open(refs_file) as f:
             commit_hash = f.read().strip()
         snapshot_dir = os.path.join(
-            CACHE_DIR, "models--rednote-hilab--dots.ocr", "snapshots", commit_hash
+            CACHE_DIR, "models--rednote-hilab--dots.mocr", "snapshots", commit_hash
         )
         if os.path.isdir(snapshot_dir):
             return snapshot_dir
     return None
+
+
+# ── Compatibility: flash_attn stub ────────────────────────────────────────────
+# dots.mocr's upstream modeling_dots_vision.py does a hard top-level import:
+#     from flash_attn import flash_attn_varlen_func
+# This crashes on Windows / systems without flash-attn installed, even when
+# we only use the SDPA backend.  The fix: inject a stub module into
+# sys.modules BEFORE transformers loads the model code.
+#
+# The stub must have:
+#   __spec__    — so importlib.util.find_spec() doesn't crash
+#   __version__ — set to "0.0.0" so transformers' is_flash_attn_2_available()
+#                 returns False (version too old)
+#   flash_attn_varlen_func — set to None (never called with SDPA backend)
+def _patch_flash_attn_import():
+    """Inject a stub flash_attn module so dots.mocr can import without flash-attn."""
+    import sys
+    import types
+    import importlib.machinery
+    if "flash_attn" not in sys.modules:
+        stub = types.ModuleType("flash_attn")
+        stub.__spec__ = importlib.machinery.ModuleSpec("flash_attn", None)
+        stub.__version__ = "0.0.0"
+        stub.flash_attn_varlen_func = None
+        sys.modules["flash_attn"] = stub
+        print("[OCR] Injected flash_attn stub (flash-attn not installed)")
 
 
 def _load_model():
@@ -98,37 +131,80 @@ def _load_model():
     if _model is not None:
         return
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f"[OCR] Loading dots.ocr on {device}...")
+    # ── Step 1: Inject flash_attn stub if needed ────────────────────────
+    # Must happen BEFORE any transformers model loading triggers the import.
+    if not _flash_attn_available:
+        _patch_flash_attn_import()
 
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"[OCR] Loading dots.mocr on {device}...")
+
+    # ── Step 2: Resolve model source (local cache or HuggingFace hub) ───
     local_path = _get_local_model_path()
     model_src = local_path or MODEL_ID
     model_kwargs = {"trust_remote_code": True}
     if not local_path:
         model_kwargs["cache_dir"] = CACHE_DIR
 
-    # Load processor from LOCAL snapshot path so the custom DotsVLProcessor
-    # (registered in configuration_dots.py) is used.  DotsVLProcessor sets
-    # image_token="<|imgpad|>" (id 151665) which matches the model's
-    # config.image_token_id.  Loading from the HF hub ID would give the base
-    # Qwen2_5_VLProcessor with image_token="<|image_pad|>" (id 151655) causing
-    # a fatal token-ID mismatch.
-    _processor = AutoProcessor.from_pretrained(model_src, **model_kwargs)
+    # ── Step 3: Load processor ──────────────────────────────────────────
+    # dots.mocr ships a custom DotsVLProcessor (in configuration_dots.py)
+    # that extends Qwen2_5_VLProcessor.  In some transformers versions its
+    # __init__ signature conflicts (passes video_processor positionally
+    # which collides with the chat_template kwarg).  When that TypeError
+    # occurs we fall back to building a standard Qwen2_5_VLProcessor
+    # manually, loading the image processor, tokenizer, and chat template
+    # separately, then setting the dots.mocr-specific token IDs:
+    #   image_token = "<|imgpad|>"  (id 151665)  — NOT the Qwen default
+    #   video_token = "<|video_pad|>" (id 151656)
+    try:
+        _processor = AutoProcessor.from_pretrained(model_src, **model_kwargs)
+    except TypeError:
+        print("[OCR] AutoProcessor hit init conflict — building processor manually")
+        from transformers import AutoImageProcessor
+        from transformers.models.qwen2_5_vl.processing_qwen2_5_vl import Qwen2_5_VLProcessor
+        _img_proc = AutoImageProcessor.from_pretrained(model_src, **model_kwargs)
+        _tok = AutoTokenizer.from_pretrained(model_src, **model_kwargs)
+
+        # Load the custom chat template (uses <|user|>/<|assistant|> tokens
+        # instead of Qwen's default <|im_start|>/<|im_end|> format)
+        _chat_tpl = None
+        _tpl_path = os.path.join(model_src, "chat_template.json") if local_path else None
+        if not _tpl_path:
+            try:
+                from huggingface_hub import hf_hub_download
+                _tpl_path = hf_hub_download(MODEL_ID, "chat_template.json", cache_dir=CACHE_DIR)
+            except Exception:
+                pass
+        if _tpl_path and os.path.isfile(_tpl_path):
+            with open(_tpl_path) as _f:
+                _chat_tpl = json.load(_f).get("chat_template")
+
+        _processor = Qwen2_5_VLProcessor(
+            image_processor=_img_proc, tokenizer=_tok, chat_template=_chat_tpl,
+        )
+        # Set dots.mocr custom token IDs (must match model's config.image_token_id)
+        _processor.image_token = "<|imgpad|>"
+        _processor.image_token_id = 151665
+        _processor.video_token = "<|video_pad|>"
+        _processor.video_token_id = 151656
     print(f"[OCR] Processor: {type(_processor).__name__}, "
           f"image_token={getattr(_processor, 'image_token', '?')}")
 
-    # ── Override image resolution cap for speed ──────────────────────────
+    # ── Step 4: Override image resolution cap ──────────────────────────
+    # Limit max_pixels to control speed vs. detail trade-off (see SPEED KNOB 1)
     if hasattr(_processor, 'image_processor'):
         old_max = getattr(_processor.image_processor, 'max_pixels', None)
         _processor.image_processor.max_pixels = OCR_MAX_PIXELS
         _processor.image_processor.min_pixels = 3136
         print(f"[OCR] max_pixels: {old_max} → {OCR_MAX_PIXELS}")
 
-    # ── Load config and set attention backend for the vision encoder ────
+    # ── Step 5: Load model weights ─────────────────────────────────────
+    # Force the vision encoder to use our selected attention backend
     config = AutoConfig.from_pretrained(model_src, **model_kwargs)
     if hasattr(config, 'vision_config'):
         config.vision_config.attn_implementation = _ATTN_BACKEND
 
+    # bfloat16 on CUDA for speed + memory savings; float32 on CPU
     dtype = torch.bfloat16 if device == "cuda" else torch.float32
     _model = AutoModelForCausalLM.from_pretrained(
         model_src,
@@ -162,7 +238,7 @@ def _smart_resize(height: int, width: int, factor: int = 28,
 
 def _parse_ocr_output(raw_output: str, img_w: int, img_h: int) -> List[Dict[str, Any]]:
     """
-    Parse the JSON output from dots.ocr into a list of block dicts.
+    Parse the JSON output from dots.mocr into a list of block dicts.
 
     The model outputs JSON like:
         [{"bbox": [x1, y1, x2, y2], "category": "Text", "text": "..."}]
@@ -344,13 +420,15 @@ def _detect_lang_hint(text: str) -> str:
 
 
 def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
-    """Run dots.ocr on a PIL Image and return a list of text blocks with bounding boxes."""
+    """Run dots.mocr on a PIL Image and return a list of text blocks with bounding boxes."""
     _load_model()
     from qwen_vl_utils import process_vision_info
 
     img_w, img_h = image.size
 
-    # ── Build messages in the Qwen2-VL multimodal format ─────────────────
+    # ── Build multimodal chat message ────────────────────────────────────
+    # Format follows the Qwen2-VL / dots.mocr convention: a single user turn
+    # containing the image and the layout extraction prompt.
     messages = [
         {
             "role": "user",
@@ -361,7 +439,7 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
         }
     ]
 
-    # ── Processor pipeline (matches official demo_hf.py) ────────────────
+    # ── Tokenize & prepare inputs (matches official demo_hf.py) ─────────
     text = _processor.apply_chat_template(
         messages, tokenize=False, add_generation_prompt=True
     )
@@ -375,7 +453,8 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
         return_tensors="pt",
     ).to(_model.device)
 
-    # Strip keys the model's forward() does not accept (e.g. mm_token_type_ids)
+    # Remove extra keys the model's forward() doesn't accept
+    # (e.g. mm_token_type_ids added by some processor versions)
     valid_keys = {"input_ids", "attention_mask", "pixel_values", "image_grid_thw"}
     for key in list(inputs.keys()):
         if key not in valid_keys:
@@ -405,6 +484,7 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
         )
     gen_time = time.perf_counter() - t0
 
+    # Trim the input prompt tokens, keeping only the generated output
     generated_ids_trimmed = [
         out_ids[len(in_ids):]
         for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
@@ -417,6 +497,7 @@ def run_ocr(image: Image.Image) -> List[Dict[str, Any]]:
     print(f"[OCR] Generated {len(generated_ids_trimmed[0])} tokens in {gen_time:.1f}s")
     print(f"[OCR] Raw output (first 500 chars): {raw[:500]}")
 
+    # Parse the model's JSON output into structured text blocks
     blocks = _parse_ocr_output(raw, img_w, img_h)
     print(f"[OCR] Found {len(blocks)} text block(s).")
     return blocks
